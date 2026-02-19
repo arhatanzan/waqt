@@ -6,29 +6,38 @@ let hijriCache = {};
 let eclipseCache = {};
 
 // ============================================
-// ROBUST PROXY FETCHER (No backend required)
+// FAST, NON-BLOCKING PROXY FETCHER
 // ============================================
+async function fetchWithTimeout(url, timeoutMs = 2500) {
+    const controller = new AbortController();
+    const id = setTimeout(() => controller.abort(), timeoutMs);
+    try {
+        const response = await fetch(url, { signal: controller.signal });
+        clearTimeout(id);
+        return response;
+    } catch (err) {
+        clearTimeout(id);
+        throw err; // Forces the catch block below to trigger instantly
+    }
+}
+
 async function fetchWithProxy(targetUrl) {
-    const proxy1 = `https://api.allorigins.win/get?url=${encodeURIComponent(targetUrl)}`;
-    const proxy2 = `https://corsproxy.io/?url=${encodeURIComponent(targetUrl)}`;
+    // Swapped to CodeTabs, a proxy less likely to be blocked by USNO
+    const proxy1 = `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(targetUrl)}`;
+    const proxy2 = `https://api.allorigins.win/raw?url=${encodeURIComponent(targetUrl)}`;
 
     try {
-        // Attempt 1: allorigins (Most reliable JSON wrapper)
-        const res = await fetch(proxy1);
-        if (res.ok) {
-            const data = await res.json();
-            if (data.contents) return JSON.parse(data.contents);
-        }
+        const res = await fetchWithTimeout(proxy1, 2500);
+        if (res.ok) return await res.json();
     } catch (e) {
-        // Silently fall through to the backup proxy
+        // Proxy 1 timed out or blocked, fall through silently
     }
 
     try {
-        // Attempt 2: corsproxy.io (Raw passthrough backup)
-        const res = await fetch(proxy2);
+        const res = await fetchWithTimeout(proxy2, 2500);
         if (res.ok) return await res.json();
     } catch (e) {
-        console.error("Both proxies failed or network is offline.");
+        console.warn("Eclipse data skipped: Proxies currently blocked by USNO firewall.");
     }
     
     return null;
@@ -49,7 +58,8 @@ async function fetchHijriData(start, end) {
         
         if (!hijriCache[key]) {
             try {
-                const res = await fetch(`https://api.aladhan.com/v1/gToHCalendar/${month}/${year}`);
+                // AlAdhan API doesn't need a proxy, so it stays fast
+                const res = await fetchWithTimeout(`https://api.aladhan.com/v1/gToHCalendar/${month}/${year}`, 4000);
                 const data = await res.json();
                 if (data.code === 200) hijriCache[key] = data.data;
             } catch (err) {
