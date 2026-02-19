@@ -5,6 +5,9 @@
 let hijriCache = {};
 let eclipseCache = {};
 
+// We use a CORS Proxy because the US Navy blocks direct browser requests
+const CORS_PROXY = "https://api.allorigins.win/raw?url=";
+
 async function fetchHijriData(start, end) {
     let d = new Date(start);
     d.setDate(1); 
@@ -37,16 +40,24 @@ async function fetchEclipseData(start, end) {
         eclipseCache[y] = { solar: [], lunar: [] };
         
         try {
-            const solarRes = await fetch(`https://aa.usno.navy.mil/api/eclipses/solar/year?year=${y}`);
+            // Proxied USNO Solar Eclipses
+            const solarUrl = encodeURIComponent(`https://aa.usno.navy.mil/api/eclipses/solar/year?year=${y}`);
+            const solarRes = await fetch(CORS_PROXY + solarUrl);
             if (solarRes.ok) {
                 const solarData = await solarRes.json();
-                if(solarData && solarData.properties && solarData.properties.data) eclipseCache[y].solar = solarData.properties.data;
+                if(solarData && solarData.properties && solarData.properties.data) {
+                    eclipseCache[y].solar = solarData.properties.data;
+                }
             }
             
-            const lunarRes = await fetch(`https://aa.usno.navy.mil/api/eclipses/lunar/year?year=${y}`);
+            // Proxied USNO Lunar Eclipses
+            const lunarUrl = encodeURIComponent(`https://aa.usno.navy.mil/api/eclipses/lunar/year?year=${y}`);
+            const lunarRes = await fetch(CORS_PROXY + lunarUrl);
             if (lunarRes.ok) {
                 const lunarData = await lunarRes.json();
-                if(lunarData && lunarData.properties && lunarData.properties.data) eclipseCache[y].lunar = lunarData.properties.data;
+                if(lunarData && lunarData.properties && lunarData.properties.data) {
+                    eclipseCache[y].lunar = lunarData.properties.data;
+                }
             }
         } catch (e) {
             console.error(`Failed to fetch eclipses for ${y}`, e);
@@ -60,7 +71,9 @@ async function fetchLocalEclipseVisibility(y, m, d, lat, lng, type) {
     const dateStr = `${y}-${mm}-${dd}`;
     
     try {
-        const res = await fetch(`https://aa.usno.navy.mil/api/eclipses/${type}/date?date=${dateStr}&coords=${lat},${lng}&height=0`);
+        const localUrl = encodeURIComponent(`https://aa.usno.navy.mil/api/eclipses/${type}/date?date=${dateStr}&coords=${lat},${lng}&height=0`);
+        const res = await fetch(CORS_PROXY + localUrl);
+        
         if (!res.ok) return false; 
         
         const data = await res.json();
@@ -68,7 +81,9 @@ async function fetchLocalEclipseVisibility(y, m, d, lat, lng, type) {
         
         if (data.properties && data.properties.local_data) {
             let textData = JSON.stringify(data.properties.local_data).toLowerCase();
-            if (textData.includes("not visible") || textData.includes("does not occur") || textData.includes("below horizon")) return false;
+            if (textData.includes("not visible") || textData.includes("does not occur") || textData.includes("below horizon")) {
+                return false;
+            }
         }
         return true;
     } catch(e) {
