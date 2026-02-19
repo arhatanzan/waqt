@@ -5,9 +5,38 @@
 let hijriCache = {};
 let eclipseCache = {};
 
-// Switched to the reliable JSON wrapper endpoint to guarantee CORS bypass
-const CORS_PROXY = "https://api.allorigins.win/get?url=";
+// ============================================
+// ROBUST PROXY FETCHER (No backend required)
+// ============================================
+async function fetchWithProxy(targetUrl) {
+    const proxy1 = `https://api.allorigins.win/get?url=${encodeURIComponent(targetUrl)}`;
+    const proxy2 = `https://corsproxy.io/?url=${encodeURIComponent(targetUrl)}`;
 
+    try {
+        // Attempt 1: allorigins (Most reliable JSON wrapper)
+        const res = await fetch(proxy1);
+        if (res.ok) {
+            const data = await res.json();
+            if (data.contents) return JSON.parse(data.contents);
+        }
+    } catch (e) {
+        // Silently fall through to the backup proxy
+    }
+
+    try {
+        // Attempt 2: corsproxy.io (Raw passthrough backup)
+        const res = await fetch(proxy2);
+        if (res.ok) return await res.json();
+    } catch (e) {
+        console.error("Both proxies failed or network is offline.");
+    }
+    
+    return null;
+}
+
+// ============================================
+// HIJRI DATA (Direct Fetch - Supports CORS)
+// ============================================
 async function fetchHijriData(start, end) {
     let d = new Date(start);
     d.setDate(1); 
@@ -31,8 +60,9 @@ async function fetchHijriData(start, end) {
     }
 }
 
-const CORS_PROXY = "https://corsproxy.io/?url=";
-
+// ============================================
+// ECLIPSE DATA (Proxied USNO Fetch)
+// ============================================
 async function fetchEclipseData(start, end) {
     let startY = start.getFullYear();
     let endY = end.getFullYear();
@@ -41,24 +71,18 @@ async function fetchEclipseData(start, end) {
         if (eclipseCache[y]) continue;
         eclipseCache[y] = { solar: [], lunar: [] };
         
-        try {
-            // Fetch Solar Eclipses
-            const solarUrl = encodeURIComponent(`https://aa.usno.navy.mil/api/eclipses/solar/year?year=${y}`);
-            const solarRes = await fetch(CORS_PROXY + solarUrl);
-            if (solarRes.ok) {
-                const solarData = await solarRes.json();
-                if(solarData.properties && solarData.properties.data) eclipseCache[y].solar = solarData.properties.data;
-            }
-            
-            // Fetch Lunar Eclipses
-            const lunarUrl = encodeURIComponent(`https://aa.usno.navy.mil/api/eclipses/lunar/year?year=${y}`);
-            const lunarRes = await fetch(CORS_PROXY + lunarUrl);
-            if (lunarRes.ok) {
-                const lunarData = await lunarRes.json();
-                if(lunarData.properties && lunarData.properties.data) eclipseCache[y].lunar = lunarData.properties.data;
-            }
-        } catch (e) {
-            console.error("Network block or proxy failure for USNO API");
+        // Fetch Solar
+        const solarUrl = `https://aa.usno.navy.mil/api/eclipses/solar/year?year=${y}`;
+        const solarData = await fetchWithProxy(solarUrl);
+        if (solarData && solarData.properties && solarData.properties.data) {
+            eclipseCache[y].solar = solarData.properties.data;
+        }
+        
+        // Fetch Lunar
+        const lunarUrl = `https://aa.usno.navy.mil/api/eclipses/lunar/year?year=${y}`;
+        const lunarData = await fetchWithProxy(lunarUrl);
+        if (lunarData && lunarData.properties && lunarData.properties.data) {
+            eclipseCache[y].lunar = lunarData.properties.data;
         }
     }
 }
@@ -68,27 +92,23 @@ async function fetchLocalEclipseVisibility(y, m, d, lat, lng, type) {
     const dd = String(d).padStart(2, '0');
     const dateStr = `${y}-${mm}-${dd}`;
     
-    try {
-        const localUrl = encodeURIComponent(`https://aa.usno.navy.mil/api/eclipses/${type}/date?date=${dateStr}&coords=${lat},${lng}&height=0`);
-        const res = await fetch(CORS_PROXY + localUrl);
-        
-        if (!res.ok) return false; 
-        
-        const data = await res.json();
-        if (data.error) return false;
-        
-        if (data.properties && data.properties.local_data) {
-            let textData = JSON.stringify(data.properties.local_data).toLowerCase();
-            if (textData.includes("not visible") || textData.includes("does not occur") || textData.includes("below horizon")) {
-                return false;
-            }
+    const localUrl = `https://aa.usno.navy.mil/api/eclipses/${type}/date?date=${dateStr}&coords=${lat},${lng}&height=0`;
+    const data = await fetchWithProxy(localUrl);
+    
+    if (!data || data.error) return false; 
+    
+    if (data.properties && data.properties.local_data) {
+        let textData = JSON.stringify(data.properties.local_data).toLowerCase();
+        if (textData.includes("not visible") || textData.includes("does not occur") || textData.includes("below horizon")) {
+            return false;
         }
-        return true;
-    } catch(e) {
-        return null; 
     }
+    return true;
 }
 
+// ============================================
+// DATA RETRIEVAL HELPERS
+// ============================================
 function getHijriFromCache(dateObj, lng) {
     let offsetDays = (lng > 55) ? -1 : 0;
     let adjustedDate = new Date(dateObj);
@@ -124,6 +144,7 @@ function getEclipseAlertForDate(dateObj, cityName) {
     
     if (match) {
         let visText = "", colorClass = "text-slate-500 bg-slate-100 border-slate-300";
+        
         if (match.visibleAtLocal === true) {
             visText = `<br><span class="text-[8px] font-normal tracking-wide lowercase capitalize">Visible in ${cityName}</span>`;
             colorClass = "text-purple-700 bg-purple-100 border-purple-300"; 
@@ -132,6 +153,7 @@ function getEclipseAlertForDate(dateObj, cityName) {
         } else {
             visText = `<br><span class="text-[8px] font-normal tracking-wide lowercase capitalize">Global Event</span>`;
         }
+        
         return `<div class="${colorClass} font-bold text-[10px] mt-1.5 uppercase rounded px-1.5 py-0.5 border leading-tight pb-1">${match.event}${visText}</div>`;
     }
     return "";
