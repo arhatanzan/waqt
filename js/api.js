@@ -6,9 +6,9 @@ let hijriCache = {};
 let eclipseCache = {};
 
 // ============================================
-// FAST, NON-BLOCKING PROXY FETCHER
+// FAST, NON-BLOCKING PROXY WATERFALL
 // ============================================
-async function fetchWithTimeout(url, timeoutMs = 2500) {
+async function fetchWithTimeout(url, timeoutMs = 3500) {
     const controller = new AbortController();
     const id = setTimeout(() => controller.abort(), timeoutMs);
     try {
@@ -17,38 +17,48 @@ async function fetchWithTimeout(url, timeoutMs = 2500) {
         return response;
     } catch (err) {
         clearTimeout(id);
-        throw err; // Forces the catch block below to trigger instantly
+        throw err; 
     }
 }
 
 async function fetchWithProxy(targetUrl) {
-    // CodeTabs proxy expects the RAW URL, not encoded (Fixes the 400 Error)
-    const proxy1 = `https://api.codetabs.com/v1/proxy?quest=${targetUrl}`;
+    // We MUST encode the URL so the proxies don't strip off the ?year= parameters
+    const encodedUrl = encodeURIComponent(targetUrl);
     
-    // AllOrigins proxy expects the ENCODED URL
-    const proxy2 = `https://api.allorigins.win/raw?url=${encodeURIComponent(targetUrl)}`;
+    // Waterfall array of 3 independent proxy servers
+    const proxies = [
+        `https://api.allorigins.win/get?url=${encodedUrl}`,
+        `https://api.codetabs.com/v1/proxy?quest=${encodedUrl}`,
+        `https://thingproxy.freeboard.io/fetch/${targetUrl}`
+    ];
 
-    try {
-        // Attempt 1: CodeTabs (Fastest)
-        const res = await fetchWithTimeout(proxy1, 3500);
-        if (res.ok) return await res.json();
-    } catch (e) {
-        // Proxy 1 timed out or blocked, fall through silently
-    }
-
-    try {
-        // Attempt 2: AllOrigins (Backup)
-        const res = await fetchWithTimeout(proxy2, 3500);
-        if (res.ok) return await res.json();
-    } catch (e) {
-        console.warn("Eclipse data skipped: Public proxies are currently timing out or blocked by USNO.");
+    for (let proxy of proxies) {
+        try {
+            const res = await fetchWithTimeout(proxy, 3000);
+            if (res.ok) {
+                const data = await res.json();
+                
+                // Handle the allorigins specific JSON wrapper
+                if (data.contents) {
+                    const parsed = JSON.parse(data.contents);
+                    if (!parsed.error) return parsed;
+                } 
+                // Handle standard raw passthrough responses
+                else if (!data.error) {
+                    return data;
+                }
+            }
+        } catch (e) {
+            // Proxy failed, timed out, or was blocked by USNO. Silently move to the next proxy in the array.
+        }
     }
     
+    console.warn("Eclipse data skipped: All public proxies are currently timed out or blocked by the USNO firewall.");
     return null;
 }
 
 // ============================================
-// HIJRI DATA (Direct Fetch - Supports CORS)
+// HIJRI DATA (Direct Fetch - Supports CORS natively)
 // ============================================
 async function fetchHijriData(start, end) {
     let d = new Date(start);
@@ -62,7 +72,6 @@ async function fetchHijriData(start, end) {
         
         if (!hijriCache[key]) {
             try {
-                // AlAdhan API doesn't need a proxy, so it stays fast
                 const res = await fetchWithTimeout(`https://api.aladhan.com/v1/gToHCalendar/${month}/${year}`, 4000);
                 const data = await res.json();
                 if (data.code === 200) hijriCache[key] = data.data;
@@ -85,14 +94,14 @@ async function fetchEclipseData(start, end) {
         if (eclipseCache[y]) continue;
         eclipseCache[y] = { solar: [], lunar: [] };
         
-        // Fetch Solar
+        // Fetch Solar Eclipses
         const solarUrl = `https://aa.usno.navy.mil/api/eclipses/solar/year?year=${y}`;
         const solarData = await fetchWithProxy(solarUrl);
         if (solarData && solarData.properties && solarData.properties.data) {
             eclipseCache[y].solar = solarData.properties.data;
         }
         
-        // Fetch Lunar
+        // Fetch Lunar Eclipses
         const lunarUrl = `https://aa.usno.navy.mil/api/eclipses/lunar/year?year=${y}`;
         const lunarData = await fetchWithProxy(lunarUrl);
         if (lunarData && lunarData.properties && lunarData.properties.data) {
