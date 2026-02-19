@@ -7,6 +7,11 @@ let audioUnlocked = false;
 let lastAzaanTriggerTime = "";
 
 // AUDIO CONTROLS & VISUAL CUES
+// STATE TRACKING
+let audioUnlocked = false;
+let lastAzaanTriggerTime = "";
+
+// AUDIO CONTROLS & VISUAL CUES
 function unlockAudioContext() {
     if (!audioUnlocked) {
         const audio = document.getElementById("azaanAudio");
@@ -21,7 +26,10 @@ function unlockAudioContext() {
 function playAzaan() {
     const audio = document.getElementById("azaanAudio");
     audio.play().then(() => {
-        document.getElementById("pdf-header").classList.add("animate-pulse", "ring-4", "ring-emerald-400");
+        // Visual Cues: Pulse the header and make the progress bar glow
+        document.getElementById("pdf-header").style.boxShadow = "0 0 25px rgba(16, 185, 129, 0.6)";
+        document.getElementById("pdf-header").style.transition = "box-shadow 0.5s ease-in-out";
+        document.getElementById("audioProgressBar").style.boxShadow = "0 0 10px rgba(16, 185, 129, 0.8)";
     }).catch(e => {
         console.warn("Audio blocked! User must interact first.");
         alert("Please click 'Generate' or play the audio manually once to enable Auto-Azaan.");
@@ -42,8 +50,45 @@ function stopAzaan() {
 }
 
 function removeVisualCue() {
-    document.getElementById("pdf-header").classList.remove("animate-pulse", "ring-4", "ring-emerald-400");
+    document.getElementById("pdf-header").style.boxShadow = "none";
+    document.getElementById("audioProgressBar").style.boxShadow = "none";
 }
+
+// FORMAT TIME HELPER FOR PROGRESS BAR
+function formatAudioTime(seconds) {
+    if (isNaN(seconds)) return "00:00";
+    const m = Math.floor(seconds / 60).toString().padStart(2, '0');
+    const s = Math.floor(seconds % 60).toString().padStart(2, '0');
+    return `${m}:${s}`;
+}
+
+// REAL-TIME PROGRESS TRACKING
+document.addEventListener("DOMContentLoaded", () => {
+    const azaanAudio = document.getElementById("azaanAudio");
+    const progressBar = document.getElementById("audioProgressBar");
+    const timeDisplay = document.getElementById("audioTimeDisplay");
+
+    azaanAudio.addEventListener("timeupdate", () => {
+        const currentTime = azaanAudio.currentTime;
+        const duration = azaanAudio.duration || 0;
+        
+        if (duration > 0) {
+            const progressPercent = (currentTime / duration) * 100;
+            progressBar.style.width = `${progressPercent}%`;
+            timeDisplay.innerText = `${formatAudioTime(currentTime)} / ${formatAudioTime(duration)}`;
+        }
+    });
+
+    azaanAudio.addEventListener("loadedmetadata", () => {
+        timeDisplay.innerText = `00:00 / ${formatAudioTime(azaanAudio.duration)}`;
+    });
+
+    azaanAudio.addEventListener("ended", () => {
+        progressBar.style.width = "0%";
+        timeDisplay.innerText = `00:00 / ${formatAudioTime(azaanAudio.duration)}`;
+        removeVisualCue();
+    });
+});
 
 // LIVE CLOCK LOGIC
 function updateLiveClock() {
