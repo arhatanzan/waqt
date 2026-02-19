@@ -13,7 +13,9 @@ function unlockAudioContext() {
                 audio.pause();
                 audio.currentTime = 0;
                 audioUnlocked = true;
-            }).catch(err => console.warn("Audio unlock pending"));
+            }).catch(() => {
+                // Silently swallow the lock warning
+            });
         }
     }
 }
@@ -25,8 +27,8 @@ function playAzaan() {
             document.getElementById("pdf-header").style.boxShadow = "0 0 25px rgba(16, 185, 129, 0.6)";
             document.getElementById("pdf-header").style.transition = "box-shadow 0.5s ease-in-out";
             document.getElementById("audioProgressBar").style.boxShadow = "0 0 10px rgba(16, 185, 129, 0.8)";
-        }).catch(e => {
-            console.warn("Audio blocked! User must interact first.");
+        }).catch(() => {
+            alert("Please click 'Generate' or play the audio manually once to enable Auto-Azaan.");
         });
     }
 }

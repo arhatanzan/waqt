@@ -5,8 +5,8 @@
 let hijriCache = {};
 let eclipseCache = {};
 
-// We use a CORS Proxy because the US Navy blocks direct browser requests
-const CORS_PROXY = "https://api.allorigins.win/raw?url=";
+// Switched to the reliable JSON wrapper endpoint to guarantee CORS bypass
+const CORS_PROXY = "https://api.allorigins.win/get?url=";
 
 async function fetchHijriData(start, end) {
     let d = new Date(start);
@@ -24,7 +24,7 @@ async function fetchHijriData(start, end) {
                 const data = await res.json();
                 if (data.code === 200) hijriCache[key] = data.data;
             } catch (err) {
-                console.error("Failed to fetch Hijri data", err);
+                // Fails silently if offline
             }
         }
         d.setMonth(d.getMonth() + 1);
@@ -44,9 +44,10 @@ async function fetchEclipseData(start, end) {
             const solarUrl = encodeURIComponent(`https://aa.usno.navy.mil/api/eclipses/solar/year?year=${y}`);
             const solarRes = await fetch(CORS_PROXY + solarUrl);
             if (solarRes.ok) {
-                const solarData = await solarRes.json();
-                if(solarData && solarData.properties && solarData.properties.data) {
-                    eclipseCache[y].solar = solarData.properties.data;
+                const proxyData = await solarRes.json();
+                if (proxyData.contents) {
+                    const solarData = JSON.parse(proxyData.contents);
+                    if(solarData.properties && solarData.properties.data) eclipseCache[y].solar = solarData.properties.data;
                 }
             }
             
@@ -54,13 +55,14 @@ async function fetchEclipseData(start, end) {
             const lunarUrl = encodeURIComponent(`https://aa.usno.navy.mil/api/eclipses/lunar/year?year=${y}`);
             const lunarRes = await fetch(CORS_PROXY + lunarUrl);
             if (lunarRes.ok) {
-                const lunarData = await lunarRes.json();
-                if(lunarData && lunarData.properties && lunarData.properties.data) {
-                    eclipseCache[y].lunar = lunarData.properties.data;
+                const proxyData = await lunarRes.json();
+                if (proxyData.contents) {
+                    const lunarData = JSON.parse(proxyData.contents);
+                    if(lunarData.properties && lunarData.properties.data) eclipseCache[y].lunar = lunarData.properties.data;
                 }
             }
         } catch (e) {
-            console.error(`Failed to fetch eclipses for ${y}`, e);
+            // Fails silently if offline
         }
     }
 }
@@ -76,7 +78,10 @@ async function fetchLocalEclipseVisibility(y, m, d, lat, lng, type) {
         
         if (!res.ok) return false; 
         
-        const data = await res.json();
+        const proxyData = await res.json();
+        if (!proxyData.contents) return false;
+        
+        const data = JSON.parse(proxyData.contents);
         if (data.error) return false;
         
         if (data.properties && data.properties.local_data) {
