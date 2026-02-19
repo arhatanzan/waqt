@@ -5,8 +5,126 @@ SunCalc.addTime(-4.5, "maghribExact", "maghribEnd");
 // STATE TRACKING
 let audioUnlocked = false;
 let lastAzaanTriggerTime = "";
+let lastLiveDay = -1;
 
+// API CACHES
+let hijriCache = {};
+let eclipseCache = {};
+
+// ============================================
+// DATA LAYER: DYNAMIC APIS
+// ============================================
+
+async function fetchHijriData(start, end) {
+    let d = new Date(start);
+    d.setDate(1); // Ensure we start at the 1st of the month to capture boundary days
+    let endObj = new Date(end);
+    
+    while (d <= endObj || (d.getMonth() === endObj.getMonth() && d.getFullYear() === endObj.getFullYear())) {
+        let year = d.getFullYear();
+        let month = d.getMonth() + 1;
+        let key = `${year}-${month}`;
+        
+        if (!hijriCache[key]) {
+            try {
+                const res = await fetch(`https://api.aladhan.com/v1/gToHCalendar/${month}/${year}`);
+                const data = await res.json();
+                if (data.code === 200) {
+                    hijriCache[key] = data.data;
+                }
+            } catch (err) {
+                console.error("No Internet / Failed to fetch Hijri data from AlAdhan API", err);
+            }
+        }
+        d.setMonth(d.getMonth() + 1);
+    }
+}
+
+async function fetchEclipseData(start, end) {
+    let startY = start.getFullYear();
+    let endY = end.getFullYear();
+    
+    for (let y = startY; y <= endY; y++) {
+        if (eclipseCache[y]) continue;
+        eclipseCache[y] = { solar: [], lunar: [] };
+        
+        try {
+            // Fetch Solar Eclipses from US Naval Observatory
+            const solarRes = await fetch(`https://aa.usno.navy.mil/api/eclipses/solar/year?year=${y}`);
+            if (solarRes.ok) {
+                const solarData = await solarRes.json();
+                if(solarData && solarData.properties && solarData.properties.data) {
+                    eclipseCache[y].solar = solarData.properties.data;
+                }
+            }
+            
+            // Fetch Lunar Eclipses from US Naval Observatory
+            const lunarRes = await fetch(`https://aa.usno.navy.mil/api/eclipses/lunar/year?year=${y}`);
+            if (lunarRes.ok) {
+                const lunarData = await lunarRes.json();
+                if(lunarData && lunarData.properties && lunarData.properties.data) {
+                    eclipseCache[y].lunar = lunarData.properties.data;
+                }
+            }
+        } catch (e) {
+            console.error(`No Internet / Failed to fetch eclipses for ${y} from USNO API`, e);
+        }
+    }
+}
+
+function getHijriFromCache(dateObj, lng) {
+    let offsetDays = 0;
+    if (lng > 55) offsetDays = -1;
+    let adjustedDate = new Date(dateObj);
+    adjustedDate.setDate(adjustedDate.getDate() + offsetDays);
+
+    let y = adjustedDate.getFullYear();
+    let m = adjustedDate.getMonth() + 1;
+    let d = adjustedDate.getDate();
+    let key = `${y}-${m}`;
+    
+    if (hijriCache[key]) {
+        let match = hijriCache[key].find(item => parseInt(item.gregorian.day) === d);
+        if (match) {
+            let h = match.hijri;
+            let mNumStr = String(h.month.number).padStart(2, '0');
+            let dNumStr = String(h.day).padStart(2, '0');
+            
+            return {
+                string: `${parseInt(h.day)} ${h.month.en}`,
+                year: `${h.year} AH`,
+                lookupKey: `${mNumStr}-${dNumStr}`,
+                dayNum: parseInt(h.day),
+                monthNum: parseInt(h.month.number)
+            };
+        }
+    }
+    // Strict internet dependency fallback
+    return { string: "API Offline", year: "", lookupKey: "00-00", dayNum: 1, monthNum: 1 };
+}
+
+function getEclipseAlertForDate(dateObj) {
+    let y = dateObj.getFullYear();
+    let m = dateObj.getMonth() + 1;
+    let d = dateObj.getDate();
+    
+    if (!eclipseCache[y]) return "";
+    
+    let allEclipses = [...eclipseCache[y].solar, ...eclipseCache[y].lunar];
+    let match = allEclipses.find(e => e.year === y && e.month === m && e.day === d);
+    
+    if (match) {
+        return `<div class="text-purple-700 bg-purple-100 border-purple-300 font-bold text-[10px] mt-1.5 uppercase rounded px-1.5 py-0.5 border leading-tight pb-1">
+                    ${match.event}
+                </div>`;
+    }
+    return "";
+}
+
+// ============================================
 // AUDIO CONTROLS & VISUAL CUES
+// ============================================
+
 function unlockAudioContext() {
     if (!audioUnlocked) {
         const audio = document.getElementById("azaanAudio");
@@ -62,7 +180,6 @@ function formatAudioTime(seconds) {
     return `${m}:${s}`;
 }
 
-// REAL-TIME PROGRESS TRACKING
 document.addEventListener("DOMContentLoaded", () => {
     const azaanAudio = document.getElementById("azaanAudio");
     const progressBar = document.getElementById("audioProgressBar");
@@ -91,7 +208,10 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 });
 
-// LIVE CLOCK LOGIC
+// ============================================
+// LIVE CLOCK & DATES LOGIC
+// ============================================
+
 function updateLiveClock() {
     const now = new Date();
     
@@ -119,15 +239,15 @@ function updateLiveClock() {
         
         document.getElementById('digitalTime').innerHTML = `${h}:${m}:${s} <span class="text-sm text-emerald-200 ml-1">${ampm}</span>`;
         
-        const gregInfo = formatDate(now);
-        const lng = parseFloat(document.getElementById("selectedLng").value) || 0;
-        const lat = parseFloat(document.getElementById("selectedLat").value) || 0;
-        const hijriInfo = getHijriData(now, lng);
-        
-        document.getElementById('liveGregDate').innerText = `${gregInfo.dayName}, ${gregInfo.dateString} ${gregInfo.gregYear}`;
-        document.getElementById('liveHijriDate').innerText = `${hijriInfo.string} ${hijriInfo.year}`;
+        // Prevent constant re-computation of dates, check only once per day
+        if (now.getDate() !== lastLiveDay) {
+            lastLiveDay = now.getDate();
+            updateLiveDates();
+        }
 
         // AUTO AZAAN LOGIC
+        const lat = parseFloat(document.getElementById("selectedLat").value) || 0;
+        const lng = parseFloat(document.getElementById("selectedLng").value) || 0;
         const times = SunCalc.getTimes(now, lat, lng);
         const subah = times.nightEnd;
         const zohar = new Date(times.solarNoon.getTime() - 1 * 60000);
@@ -146,7 +266,28 @@ function updateLiveClock() {
 }
 setInterval(updateLiveClock, 1000);
 
-// UI SEARCH & TOGGLE LOGIC
+async function updateLiveDates() {
+    const now = new Date();
+    const lng = parseFloat(document.getElementById("selectedLng").value) || 0;
+    const gregInfo = formatDate(now);
+    
+    if(document.getElementById('liveGregDate')) {
+        document.getElementById('liveGregDate').innerText = `${gregInfo.dayName}, ${gregInfo.dateString} ${gregInfo.gregYear}`;
+    }
+
+    // Await API response for the current month so the live clock doesn't show an error
+    await fetchHijriData(now, now);
+    const hijriInfo = getHijriFromCache(now, lng);
+    
+    if(hijriInfo && document.getElementById('liveHijriDate')) {
+        document.getElementById('liveHijriDate').innerText = `${hijriInfo.string} ${hijriInfo.year}`;
+    }
+}
+
+// ============================================
+// UI & SEARCH
+// ============================================
+
 const searchInput = document.getElementById("citySearch");
 const searchResults = document.getElementById("searchResults");
 let searchTimeout;
@@ -203,7 +344,6 @@ function toggleView() {
     }
 }
 
-// FORMAT DATE FOR HTML INPUTS SAFELY
 function formatHtmlDate(dateObj) {
     const y = dateObj.getFullYear();
     const m = String(dateObj.getMonth() + 1).padStart(2, '0');
@@ -211,7 +351,7 @@ function formatHtmlDate(dateObj) {
     return `${y}-${m}-${d}`;
 }
 
-window.onload = function () {
+window.onload = async function () {
   const today = new Date();
   const thirtyDaysLater = new Date();
   thirtyDaysLater.setDate(today.getDate() + 29);
@@ -221,12 +361,16 @@ window.onload = function () {
       document.getElementById("endDate").value = formatHtmlDate(thirtyDaysLater);
       document.getElementById("citySearch").value = "Lucknow";
       
+      await updateLiveDates(); 
       updateLiveClock();
-      generateTimetable(); 
+      await generateTimetable(); 
   }
 };
 
+// ============================================
 // FORMATTING & PARSING LOGIC
+// ============================================
+
 function formatTime(dateObj, is24Hour) {
   if (isNaN(dateObj)) return "-";
   let hours = dateObj.getHours();
@@ -253,26 +397,6 @@ function getEventColorClass(eventName) {
   return 'text-green-700 font-semibold';
 }
 
-function getHijriData(dateObj, lng) {
-  let offsetDays = 0;
-  if (lng > 55) offsetDays = -1;
-  let adjustedDate = new Date(dateObj);
-  adjustedDate.setDate(adjustedDate.getDate() + offsetDays);
-  
-  const strFormatter = new Intl.DateTimeFormat('en-US-u-ca-islamic', { day: 'numeric', month: 'long', year: 'numeric' });
-  const strParts = strFormatter.formatToParts(adjustedDate);
-  const dayStr = strParts.find(p => p.type === 'day').value;
-  const monthStr = strParts.find(p => p.type === 'month').value;
-  const yearStr = strParts.find(p => p.type === 'year').value;
-  
-  const numFormatter = new Intl.DateTimeFormat('en-US-u-ca-islamic', { day: '2-digit', month: '2-digit' });
-  const numParts = numFormatter.formatToParts(adjustedDate);
-  const mNum = numParts.find(p => p.type === 'month').value.padStart(2, '0');
-  const dNum = numParts.find(p => p.type === 'day').value.padStart(2, '0');
-  
-  return { string: `${dayStr} ${monthStr}`, year: `${yearStr} AH`, lookupKey: `${mNum}-${dNum}`, dayNum: parseInt(dNum, 10), monthNum: parseInt(mNum, 10) };
-}
-
 function formatDate(dateObj) {
   const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
   const days = ["SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT"];
@@ -282,24 +406,6 @@ function formatDate(dateObj) {
     gregYear: `${dateObj.getFullYear()} CE`,
     lookupKey: String(dateObj.getMonth() + 1).padStart(2, '0') + "-" + String(dateObj.getDate()).padStart(2, '0')
   };
-}
-
-function checkEclipseVisibility(dateStr, lat, lng) {
-    switch(dateStr) {
-        case "2025-03-14": return (lng > -130 && lng < 60); 
-        case "2025-03-29": return (lat > 30 && lng > -90 && lng < 90); 
-        case "2025-09-07": return (lng > -20 && lng < 180); 
-        case "2025-09-21": return (lat < -40 && lng > 100); 
-        case "2026-02-17": return (lat < 10 && lng > -40 && lng < 60); 
-        case "2026-03-03": return (lng < -30 || lng > 110); 
-        case "2026-08-12": return (lat > 40 && lng > -100 && lng < 40); 
-        case "2026-08-28": return (lng > -130 && lng < 50); 
-        case "2027-02-06": return (lat > -50 && lat < 30 && lng > -80 && lng < 40); 
-        case "2027-02-20": return (lng > -120 && lng < 80); 
-        case "2027-08-02": return (lat > -10 && lat < 50 && lng > -20 && lng < 70); 
-        case "2027-08-17": return (lng > 40 && lng < 180); 
-        default: return false;
-    }
 }
 
 function getAstrologyInfo(date, lat, lng, cityName) {
@@ -321,37 +427,14 @@ function getAstrologyInfo(date, lat, lng, cityName) {
     else if (phaseInfo.phase > 0.95) phaseName = "Full Moon";
     else if (phaseInfo.phase < 0.5) phaseName = "Waxing Moon";
 
-    const eclipseDates = {
-        "2025-03-14": "Total Lunar Eclipse", "2025-03-29": "Partial Solar Eclipse",
-        "2025-09-07": "Total Lunar Eclipse", "2025-09-21": "Partial Solar Eclipse",
-        "2026-02-17": "Annular Solar Eclipse", "2026-03-03": "Total Lunar Eclipse",
-        "2026-08-12": "Total Solar Eclipse", "2026-08-28": "Partial Lunar Eclipse",
-        "2027-02-06": "Annular Solar Eclipse", "2027-02-20": "Penumbral Lunar Eclipse",
-        "2027-08-02": "Total Solar Eclipse", "2027-08-17": "Penumbral Lunar Eclipse"
-    };
-
-    const yyyy = date.getFullYear();
-    const mm = String(date.getMonth() + 1).padStart(2, '0');
-    const dd = String(date.getDate()).padStart(2, '0');
-    const dateStr = `${yyyy}-${mm}-${dd}`;
-    
-    let eclipseAlert = "";
-    if (eclipseDates[dateStr]) {
-        const isVisible = checkEclipseVisibility(dateStr, lat, lng);
-        const visibilityText = isVisible ? `Visible in ${cityName}` : `Not Visible in ${cityName}`;
-        const colorClass = isVisible ? "text-purple-700 bg-purple-100 border-purple-300" : "text-slate-500 bg-slate-100 border-slate-300";
-        
-        eclipseAlert = `<div class="${colorClass} font-bold text-[10px] mt-1.5 uppercase rounded px-1.5 py-0.5 border leading-tight pb-1">
-                            ${eclipseDates[dateStr]}<br><span class="text-[8px] font-normal tracking-wide lowercase capitalize">${visibilityText}</span>
-                        </div>`;
-    }
+    // Dynamic Eclipse Lookup replaces the hardcoded list
+    let eclipseAlert = getEclipseAlertForDate(date);
 
     return `<div class="text-[11px] font-bold text-slate-800">Moon in ${zodiac}</div>
             <div class="text-[10px] text-slate-500 font-medium">${phaseName}</div>
             ${specialStatus}${eclipseAlert}`;
 }
 
-// SAFE DATA RETRIEVAL (Prevents crashes if data/events.js fails to load)
 function getTareeqInfo(hijriDayNum, hijriMonthNum) {
     if (typeof monthSpecificNahas !== 'undefined' && monthSpecificNahas[hijriMonthNum] && monthSpecificNahas[hijriMonthNum].includes(hijriDayNum)) {
         return `<div class="text-red-700 font-extrabold text-[11px] uppercase tracking-wide">Nahas Akbar</div>
@@ -367,9 +450,19 @@ function getTareeqInfo(hijriDayNum, hijriMonthNum) {
             <div class="mt-1 text-[10px] text-slate-600 bg-slate-50 border border-slate-200 px-1 py-0.5 rounded font-medium leading-tight inline-block">${details.desc}</div>`;
 }
 
+// ============================================
 // MAIN GENERATION LOGIC
-function generateTimetable() {
+// ============================================
+
+async function generateTimetable() {
   unlockAudioContext(); 
+  
+  const genBtn = document.getElementById("generateBtn");
+  if(genBtn) {
+      genBtn.innerText = "Fetching APIs...";
+      genBtn.disabled = true;
+      genBtn.classList.add("opacity-50", "cursor-wait");
+  }
   
   const lat = parseFloat(document.getElementById("selectedLat").value);
   const lng = parseFloat(document.getElementById("selectedLng").value);
@@ -382,12 +475,15 @@ function generateTimetable() {
   const showEvents = document.getElementById("showEvents").checked;
   const showTareeq = document.getElementById("showTareeq").checked;
   const showAstrology = document.getElementById("showAstrology").checked;
-  
   const is24Hour = document.querySelector('input[name="timeFormat"]:checked').value === "24";
+
+  // Pre-fetch all necessary calendar and astronomical data from APIs
+  await fetchHijriData(start, end);
+  await fetchEclipseData(start, end);
 
   document.getElementById("location-display").innerText = `Timings for ${cityName}`;
   const startGregInfo = formatDate(start);
-  const startHijriInfo = getHijriData(start, lng);
+  const startHijriInfo = getHijriFromCache(start, lng);
   document.getElementById("header-years").innerText = `${startGregInfo.gregYear}  //  ${startHijriInfo.year}`;
 
   const tableHeader = document.getElementById("tableHeader");
@@ -433,12 +529,11 @@ function generateTimetable() {
     const maghrib = new Date(times.maghribEnd.getTime() - 5 * 60000);
 
     const dateInfo = formatDate(currentDate);
-    const hijriInfo = getHijriData(currentDate, lng);
+    const hijriInfo = getHijriFromCache(currentDate, lng);
     const rowClass = rowCount % 2 === 0 ? "bg-white" : "bg-slate-50";
 
     let eventsHTML = '';
     if (showEvents) {
-        // Safe lookups that won't crash if events.js isn't found
         const safeHistorical = (typeof historicalEvents !== 'undefined' && historicalEvents[hijriInfo.lookupKey]) ? historicalEvents[hijriInfo.lookupKey] : [];
         safeHistorical.forEach(ev => eventsHTML += `<div class="text-[10px] mt-1.5 leading-tight ${getEventColorClass(ev)}">${ev}</div>`);
         
@@ -507,6 +602,12 @@ function generateTimetable() {
 
     currentDate.setDate(currentDate.getDate() + 1);
     rowCount++;
+  }
+  
+  if(genBtn) {
+      genBtn.innerText = "Generate";
+      genBtn.disabled = false;
+      genBtn.classList.remove("opacity-50", "cursor-wait");
   }
 }
 
