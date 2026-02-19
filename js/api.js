@@ -22,22 +22,26 @@ async function fetchWithTimeout(url, timeoutMs = 2500) {
 }
 
 async function fetchWithProxy(targetUrl) {
-    // Swapped to CodeTabs, a proxy less likely to be blocked by USNO
-    const proxy1 = `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(targetUrl)}`;
+    // CodeTabs proxy expects the RAW URL, not encoded (Fixes the 400 Error)
+    const proxy1 = `https://api.codetabs.com/v1/proxy?quest=${targetUrl}`;
+    
+    // AllOrigins proxy expects the ENCODED URL
     const proxy2 = `https://api.allorigins.win/raw?url=${encodeURIComponent(targetUrl)}`;
 
     try {
-        const res = await fetchWithTimeout(proxy1, 2500);
+        // Attempt 1: CodeTabs (Fastest)
+        const res = await fetchWithTimeout(proxy1, 3500);
         if (res.ok) return await res.json();
     } catch (e) {
         // Proxy 1 timed out or blocked, fall through silently
     }
 
     try {
-        const res = await fetchWithTimeout(proxy2, 2500);
+        // Attempt 2: AllOrigins (Backup)
+        const res = await fetchWithTimeout(proxy2, 3500);
         if (res.ok) return await res.json();
     } catch (e) {
-        console.warn("Eclipse data skipped: Proxies currently blocked by USNO firewall.");
+        console.warn("Eclipse data skipped: Public proxies are currently timing out or blocked by USNO.");
     }
     
     return null;
