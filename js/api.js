@@ -31,6 +31,8 @@ async function fetchHijriData(start, end) {
     }
 }
 
+const CORS_PROXY = "https://corsproxy.io/?url=";
+
 async function fetchEclipseData(start, end) {
     let startY = start.getFullYear();
     let endY = end.getFullYear();
@@ -40,29 +42,23 @@ async function fetchEclipseData(start, end) {
         eclipseCache[y] = { solar: [], lunar: [] };
         
         try {
-            // Proxied USNO Solar Eclipses
+            // Fetch Solar Eclipses
             const solarUrl = encodeURIComponent(`https://aa.usno.navy.mil/api/eclipses/solar/year?year=${y}`);
             const solarRes = await fetch(CORS_PROXY + solarUrl);
             if (solarRes.ok) {
-                const proxyData = await solarRes.json();
-                if (proxyData.contents) {
-                    const solarData = JSON.parse(proxyData.contents);
-                    if(solarData.properties && solarData.properties.data) eclipseCache[y].solar = solarData.properties.data;
-                }
+                const solarData = await solarRes.json();
+                if(solarData.properties && solarData.properties.data) eclipseCache[y].solar = solarData.properties.data;
             }
             
-            // Proxied USNO Lunar Eclipses
+            // Fetch Lunar Eclipses
             const lunarUrl = encodeURIComponent(`https://aa.usno.navy.mil/api/eclipses/lunar/year?year=${y}`);
             const lunarRes = await fetch(CORS_PROXY + lunarUrl);
             if (lunarRes.ok) {
-                const proxyData = await lunarRes.json();
-                if (proxyData.contents) {
-                    const lunarData = JSON.parse(proxyData.contents);
-                    if(lunarData.properties && lunarData.properties.data) eclipseCache[y].lunar = lunarData.properties.data;
-                }
+                const lunarData = await lunarRes.json();
+                if(lunarData.properties && lunarData.properties.data) eclipseCache[y].lunar = lunarData.properties.data;
             }
         } catch (e) {
-            // Fails silently if offline
+            console.error("Network block or proxy failure for USNO API");
         }
     }
 }
@@ -78,10 +74,7 @@ async function fetchLocalEclipseVisibility(y, m, d, lat, lng, type) {
         
         if (!res.ok) return false; 
         
-        const proxyData = await res.json();
-        if (!proxyData.contents) return false;
-        
-        const data = JSON.parse(proxyData.contents);
+        const data = await res.json();
         if (data.error) return false;
         
         if (data.properties && data.properties.local_data) {
