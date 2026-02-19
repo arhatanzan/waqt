@@ -17,7 +17,7 @@ let eclipseCache = {};
 
 async function fetchHijriData(start, end) {
     let d = new Date(start);
-    d.setDate(1); // Ensure we start at the 1st of the month to capture boundary days
+    d.setDate(1); 
     let endObj = new Date(end);
     
     while (d <= endObj || (d.getMonth() === endObj.getMonth() && d.getFullYear() === endObj.getFullYear())) {
@@ -49,7 +49,6 @@ async function fetchEclipseData(start, end) {
         eclipseCache[y] = { solar: [], lunar: [] };
         
         try {
-            // Fetch Solar Eclipses from US Naval Observatory
             const solarRes = await fetch(`https://aa.usno.navy.mil/api/eclipses/solar/year?year=${y}`);
             if (solarRes.ok) {
                 const solarData = await solarRes.json();
@@ -58,7 +57,6 @@ async function fetchEclipseData(start, end) {
                 }
             }
             
-            // Fetch Lunar Eclipses from US Naval Observatory
             const lunarRes = await fetch(`https://aa.usno.navy.mil/api/eclipses/lunar/year?year=${y}`);
             if (lunarRes.ok) {
                 const lunarData = await lunarRes.json();
@@ -69,6 +67,35 @@ async function fetchEclipseData(start, end) {
         } catch (e) {
             console.error(`No Internet / Failed to fetch eclipses for ${y} from USNO API`, e);
         }
+    }
+}
+
+// TARGETED LOCAL VISIBILITY CHECKER
+async function fetchLocalEclipseVisibility(y, m, d, lat, lng, type) {
+    const mm = String(m).padStart(2, '0');
+    const dd = String(d).padStart(2, '0');
+    const dateStr = `${y}-${mm}-${dd}`;
+    
+    try {
+        const res = await fetch(`https://aa.usno.navy.mil/api/eclipses/${type}/date?date=${dateStr}&coords=${lat},${lng}&height=0`);
+        
+        // If USNO returns an error code, it means the eclipse geometry completely misses these coordinates
+        if (!res.ok) return false; 
+        
+        const data = await res.json();
+        if (data.error) return false;
+        
+        // Sometimes lunar eclipses return data but explicitly state they occur below the horizon
+        if (data.properties && data.properties.local_data) {
+            let textData = JSON.stringify(data.properties.local_data).toLowerCase();
+            if (textData.includes("not visible") || textData.includes("does not occur") || textData.includes("below horizon")) {
+                return false;
+            }
+        }
+        return true;
+    } catch(e) {
+        console.warn("Visibility check failed due to network", e);
+        return null; // Return null if we are offline and can't check
     }
 }
 
@@ -99,23 +126,34 @@ function getHijriFromCache(dateObj, lng) {
             };
         }
     }
-    // Strict internet dependency fallback
     return { string: "API Offline", year: "", lookupKey: "00-00", dayNum: 1, monthNum: 1 };
 }
 
-function getEclipseAlertForDate(dateObj) {
+function getEclipseAlertForDate(dateObj, cityName) {
     let y = dateObj.getFullYear();
     let m = dateObj.getMonth() + 1;
     let d = dateObj.getDate();
     
     if (!eclipseCache[y]) return "";
     
-    let allEclipses = [...eclipseCache[y].solar, ...eclipseCache[y].lunar];
-    let match = allEclipses.find(e => e.year === y && e.month === m && e.day === d);
+    let match = eclipseCache[y].solar.find(e => e.year === y && e.month === m && e.day === d);
+    if (!match) match = eclipseCache[y].lunar.find(e => e.year === y && e.month === m && e.day === d);
     
     if (match) {
-        return `<div class="text-purple-700 bg-purple-100 border-purple-300 font-bold text-[10px] mt-1.5 uppercase rounded px-1.5 py-0.5 border leading-tight pb-1">
-                    ${match.event}
+        let visText = "";
+        let colorClass = "text-slate-500 bg-slate-100 border-slate-300"; // Default styling for Not Visible
+        
+        if (match.visibleAtLocal === true) {
+            visText = `<br><span class="text-[8px] font-normal tracking-wide lowercase capitalize">Visible in ${cityName}</span>`;
+            colorClass = "text-purple-700 bg-purple-100 border-purple-300"; // Highlight styling for Visible
+        } else if (match.visibleAtLocal === false) {
+            visText = `<br><span class="text-[8px] font-normal tracking-wide lowercase capitalize">Not Visible in ${cityName}</span>`;
+        } else {
+            visText = `<br><span class="text-[8px] font-normal tracking-wide lowercase capitalize">Global Event</span>`;
+        }
+
+        return `<div class="${colorClass} font-bold text-[10px] mt-1.5 uppercase rounded px-1.5 py-0.5 border leading-tight pb-1">
+                    ${match.event}${visText}
                 </div>`;
     }
     return "";
@@ -239,13 +277,11 @@ function updateLiveClock() {
         
         document.getElementById('digitalTime').innerHTML = `${h}:${m}:${s} <span class="text-sm text-emerald-200 ml-1">${ampm}</span>`;
         
-        // Prevent constant re-computation of dates, check only once per day
         if (now.getDate() !== lastLiveDay) {
             lastLiveDay = now.getDate();
             updateLiveDates();
         }
 
-        // AUTO AZAAN LOGIC
         const lat = parseFloat(document.getElementById("selectedLat").value) || 0;
         const lng = parseFloat(document.getElementById("selectedLng").value) || 0;
         const times = SunCalc.getTimes(now, lat, lng);
@@ -275,7 +311,6 @@ async function updateLiveDates() {
         document.getElementById('liveGregDate').innerText = `${gregInfo.dayName}, ${gregInfo.dateString} ${gregInfo.gregYear}`;
     }
 
-    // Await API response for the current month so the live clock doesn't show an error
     await fetchHijriData(now, now);
     const hijriInfo = getHijriFromCache(now, lng);
     
@@ -427,8 +462,7 @@ function getAstrologyInfo(date, lat, lng, cityName) {
     else if (phaseInfo.phase > 0.95) phaseName = "Full Moon";
     else if (phaseInfo.phase < 0.5) phaseName = "Waxing Moon";
 
-    // Dynamic Eclipse Lookup replaces the hardcoded list
-    let eclipseAlert = getEclipseAlertForDate(date);
+    let eclipseAlert = getEclipseAlertForDate(date, cityName);
 
     return `<div class="text-[11px] font-bold text-slate-800">Moon in ${zodiac}</div>
             <div class="text-[10px] text-slate-500 font-medium">${phaseName}</div>
@@ -477,9 +511,28 @@ async function generateTimetable() {
   const showAstrology = document.getElementById("showAstrology").checked;
   const is24Hour = document.querySelector('input[name="timeFormat"]:checked').value === "24";
 
-  // Pre-fetch all necessary calendar and astronomical data from APIs
   await fetchHijriData(start, end);
   await fetchEclipseData(start, end);
+
+  // --- DYNAMIC LOCAL VISIBILITY CHECKER ---
+  // Before building the table, we query the USNO API with your exact Lat/Lng
+  // for any specific eclipses that fall within your searched date range!
+  for (let y = start.getFullYear(); y <= end.getFullYear(); y++) {
+      if (!eclipseCache[y]) continue;
+      
+      for (let eclipse of eclipseCache[y].solar) {
+          let edate = new Date(eclipse.year, eclipse.month - 1, eclipse.day);
+          if (edate >= start && edate <= end && eclipse.visibleAtLocal === undefined) {
+              eclipse.visibleAtLocal = await fetchLocalEclipseVisibility(eclipse.year, eclipse.month, eclipse.day, lat, lng, 'solar');
+          }
+      }
+      for (let eclipse of eclipseCache[y].lunar) {
+          let edate = new Date(eclipse.year, eclipse.month - 1, eclipse.day);
+          if (edate >= start && edate <= end && eclipse.visibleAtLocal === undefined) {
+              eclipse.visibleAtLocal = await fetchLocalEclipseVisibility(eclipse.year, eclipse.month, eclipse.day, lat, lng, 'lunar');
+          }
+      }
+  }
 
   document.getElementById("location-display").innerText = `Timings for ${cityName}`;
   const startGregInfo = formatDate(start);
