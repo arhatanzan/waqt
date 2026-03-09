@@ -65,14 +65,14 @@ function setAudioSpeed(speed) {
         
         // Update button styling
         document.querySelectorAll('[id^="speed-"]').forEach(btn => {
-            btn.classList.remove("bg-emerald-200", "text-emerald-800", "border-emerald-300");
-            btn.classList.add("bg-slate-100", "text-slate-700", "border-slate-200");
+            btn.classList.remove("bg-emerald-200", "text-slate-900", "font-extrabold");
+            btn.classList.add("text-slate-700");
         });
         
         const activeBtn = document.getElementById(`speed-${speed}x`);
         if(activeBtn) {
-            activeBtn.classList.remove("bg-slate-100", "text-slate-700", "border-slate-200");
-            activeBtn.classList.add("bg-emerald-200", "text-emerald-800", "border-emerald-300");
+            activeBtn.classList.remove("text-slate-700");
+            activeBtn.classList.add("bg-emerald-200", "text-slate-900", "font-extrabold");
         }
     }
 }
@@ -86,8 +86,7 @@ document.addEventListener("DOMContentLoaded", () => {
         // Set initial speed button highlight
         const activeBtn = document.getElementById("speed-1x");
         if(activeBtn) {
-            activeBtn.classList.remove("bg-slate-100", "text-slate-700", "border-slate-200");
-            activeBtn.classList.add("bg-emerald-200", "text-emerald-800", "border-emerald-300");
+            activeBtn.classList.add("bg-emerald-200", "text-slate-900", "font-extrabold");
         }
         
         azaanAudio.addEventListener("timeupdate", () => {
