@@ -112,7 +112,6 @@ function seekAudio(e) {
     if(!audio || !container) return;
     
     const rect = container.getBoundingClientRect();
-    const progressBar = document.getElementById("audioProgressBar");
     const x = e.clientX - rect.left;
     const percentage = Math.max(0, Math.min(1, x / rect.width));
     
@@ -143,7 +142,7 @@ document.addEventListener("DOMContentLoaded", () => {
         });
         
         document.addEventListener("mousemove", (e) => {
-            if(isDragging) {
+            if(isDragging && progressContainer) {
                 seekAudio(e);
             }
         });
