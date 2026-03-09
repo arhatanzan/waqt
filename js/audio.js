@@ -58,12 +58,38 @@ function formatAudioTime(seconds) {
     return `${m}:${s}`;
 }
 
+function setAudioSpeed(speed) {
+    const audio = document.getElementById("azaanAudio");
+    if(audio) {
+        audio.playbackRate = speed;
+        
+        // Update button styling
+        document.querySelectorAll('[id^="speed-"]').forEach(btn => {
+            btn.classList.remove("bg-emerald-200", "text-emerald-800", "border-emerald-300");
+            btn.classList.add("bg-slate-100", "text-slate-700", "border-slate-200");
+        });
+        
+        const activeBtn = document.getElementById(`speed-${speed}x`);
+        if(activeBtn) {
+            activeBtn.classList.remove("bg-slate-100", "text-slate-700", "border-slate-200");
+            activeBtn.classList.add("bg-emerald-200", "text-emerald-800", "border-emerald-300");
+        }
+    }
+}
+
 document.addEventListener("DOMContentLoaded", () => {
     const azaanAudio = document.getElementById("azaanAudio");
     const progressBar = document.getElementById("audioProgressBar");
     const timeDisplay = document.getElementById("audioTimeDisplay");
 
     if(azaanAudio && progressBar && timeDisplay) {
+        // Set initial speed button highlight
+        const activeBtn = document.getElementById("speed-1x");
+        if(activeBtn) {
+            activeBtn.classList.remove("bg-slate-100", "text-slate-700", "border-slate-200");
+            activeBtn.classList.add("bg-emerald-200", "text-emerald-800", "border-emerald-300");
+        }
+        
         azaanAudio.addEventListener("timeupdate", () => {
             const currentTime = azaanAudio.currentTime;
             const duration = azaanAudio.duration || 0;

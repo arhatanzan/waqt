@@ -100,28 +100,9 @@ async function generateTimetable() {
   const showSaher = document.getElementById("showSaher").checked;
   const showEvents = document.getElementById("showEvents").checked;
   const showTareeq = document.getElementById("showTareeq").checked;
-  const showAstrology = document.getElementById("showAstrology").checked;
   const is24Hour = document.querySelector('input[name="timeFormat"]:checked').value === "24";
 
   await fetchHijriData(start, end);
-  await fetchEclipseData(start, end);
-
-  for (let y = start.getFullYear(); y <= end.getFullYear(); y++) {
-      if (!eclipseCache[y]) continue;
-      
-      for (let eclipse of eclipseCache[y].solar) {
-          let edate = new Date(eclipse.year, eclipse.month - 1, eclipse.day);
-          if (edate >= start && edate <= end && eclipse.visibleAtLocal === undefined) {
-              eclipse.visibleAtLocal = await fetchLocalEclipseVisibility(eclipse.year, eclipse.month, eclipse.day, lat, lng, 'solar');
-          }
-      }
-      for (let eclipse of eclipseCache[y].lunar) {
-          let edate = new Date(eclipse.year, eclipse.month - 1, eclipse.day);
-          if (edate >= start && edate <= end && eclipse.visibleAtLocal === undefined) {
-              eclipse.visibleAtLocal = await fetchLocalEclipseVisibility(eclipse.year, eclipse.month, eclipse.day, lat, lng, 'lunar');
-          }
-      }
-  }
 
   document.getElementById("location-display").innerText = `Timings for ${cityName}`;
   const startGregInfo = formatDate(start);
@@ -139,7 +120,6 @@ async function generateTimetable() {
   
   if (showEvents) headersHTML += `<th class="p-3 font-bold border-r border-slate-300 min-w-[140px]">Events</th>`;
   if (showTareeq) headersHTML += `<th class="p-3 font-bold border-r border-slate-300 w-28">Tareeq</th>`;
-  if (showAstrology) headersHTML += `<th class="p-3 font-bold border-r border-slate-300 w-28">Astrology</th>`;
   if (showSaher) headersHTML += `<th class="${uniformTimeCol} text-emerald-800 bg-emerald-50/50">Tark-e-Saher<br><span class="text-[9px] font-normal text-slate-500 uppercase tracking-wide">10m Buffer</span></th>`;
   
   headersHTML += `
@@ -190,7 +170,6 @@ async function generateTimetable() {
 
     if (showEvents) rowHTML += `<td class="p-2 border-r border-slate-200 text-left align-top pt-3">${eventsHTML}</td>`;
     if (showTareeq) rowHTML += `<td class="p-2 border-r border-slate-200 text-center align-top pt-3">${getTareeqInfo(hijriInfo.dayNum, hijriInfo.monthNum)}</td>`;
-    if (showAstrology) rowHTML += `<td class="p-2 border-r border-slate-200 text-center align-top pt-3">${getAstrologyInfo(currentDate, lat, lng, cityName)}</td>`;
     if (showSaher) rowHTML += `<td class="p-2 bg-emerald-50/30 align-middle">${formatTime(saher, is24Hour)}</td>`;
 
     rowHTML += `
@@ -203,11 +182,10 @@ async function generateTimetable() {
     tableBody.insertAdjacentHTML("beforeend", rowHTML);
 
     let calExtraInfoHTML = ``;
-    if (showEvents || showTareeq || showAstrology) {
+    if (showEvents || showTareeq) {
         calExtraInfoHTML += `<div class="mt-2 pt-2 border-t border-slate-100 flex flex-col gap-1.5">`;
         if (showEvents && eventsHTML !== `<span class="text-[10px] text-slate-400">-</span>`) calExtraInfoHTML += `<div><span class="text-[9px] font-bold text-slate-400 uppercase tracking-widest block mb-0.5">Events</span>${eventsHTML}</div>`;
         if (showTareeq) calExtraInfoHTML += `<div><span class="text-[9px] font-bold text-slate-400 uppercase tracking-widest block mb-0.5">Tareeq</span>${getTareeqInfo(hijriInfo.dayNum, hijriInfo.monthNum)}</div>`;
-        if (showAstrology) calExtraInfoHTML += `<div><span class="text-[9px] font-bold text-slate-400 uppercase tracking-widest block mb-0.5">Astro</span>${getAstrologyInfo(currentDate, lat, lng, cityName)}</div>`;
         calExtraInfoHTML += `</div>`;
     }
 

@@ -3,7 +3,6 @@
 // ============================================
 
 let hijriCache = {};
-let eclipseCache = {};
 
 // ============================================
 // HIJRI DATA (Direct Fetch - Supports CORS natively)
@@ -29,67 +28,6 @@ async function fetchHijriData(start, end) {
             }
         }
         d.setMonth(d.getMonth() + 1);
-    }
-}
-
-// ============================================
-// ECLIPSE DATA (Routed through your private Netlify backend)
-// ============================================
-async function fetchEclipseData(start, end) {
-    let startY = start.getFullYear();
-    let endY = end.getFullYear();
-    
-    for (let y = startY; y <= endY; y++) {
-        if (eclipseCache[y]) continue;
-        eclipseCache[y] = { solar: [], lunar: [] };
-        
-        try {
-            // Ask your backend for Solar Eclipses
-            const solarRes = await fetch(`/.netlify/functions/usno?type=solar&year=${y}`);
-            if (solarRes.ok) {
-                const solarData = await solarRes.json();
-                if (solarData.properties && solarData.properties.data) {
-                    eclipseCache[y].solar = solarData.properties.data;
-                }
-            }
-            
-            // Ask your backend for Lunar Eclipses
-            const lunarRes = await fetch(`/.netlify/functions/usno?type=lunar&year=${y}`);
-            if (lunarRes.ok) {
-                const lunarData = await lunarRes.json();
-                if (lunarData.properties && lunarData.properties.data) {
-                    eclipseCache[y].lunar = lunarData.properties.data;
-                }
-            }
-        } catch (e) {
-            console.error("Backend fetch failed.");
-        }
-    }
-}
-
-async function fetchLocalEclipseVisibility(y, m, d, lat, lng, type) {
-    const mm = String(m).padStart(2, '0');
-    const dd = String(d).padStart(2, '0');
-    const dateStr = `${y}-${mm}-${dd}`;
-    const coords = `${lat},${lng}`;
-    
-    try {
-        // Ask your backend to check Local Visibility
-        const res = await fetch(`/.netlify/functions/usno?type=${type}&date=${dateStr}&coords=${coords}`);
-        if (!res.ok) return false; 
-        
-        const data = await res.json();
-        if (data.error) return false;
-        
-        if (data.properties && data.properties.local_data) {
-            let textData = JSON.stringify(data.properties.local_data).toLowerCase();
-            if (textData.includes("not visible") || textData.includes("does not occur") || textData.includes("below horizon")) {
-                return false;
-            }
-        }
-        return true;
-    } catch(e) {
-        return null; 
     }
 }
 
@@ -120,28 +58,4 @@ function getHijriFromCache(dateObj, lng) {
         }
     }
     return { string: "API Offline", year: "", lookupKey: "00-00", dayNum: 1, monthNum: 1 };
-}
-
-function getEclipseAlertForDate(dateObj, cityName) {
-    let y = dateObj.getFullYear(), m = dateObj.getMonth() + 1, d = dateObj.getDate();
-    if (!eclipseCache[y]) return "";
-    
-    let match = eclipseCache[y].solar.find(e => e.year === y && e.month === m && e.day === d) || 
-                eclipseCache[y].lunar.find(e => e.year === y && e.month === m && e.day === d);
-    
-    if (match) {
-        let visText = "", colorClass = "text-slate-500 bg-slate-100 border-slate-300";
-        
-        if (match.visibleAtLocal === true) {
-            visText = `<br><span class="text-[8px] font-normal tracking-wide lowercase capitalize">Visible in ${cityName}</span>`;
-            colorClass = "text-purple-700 bg-purple-100 border-purple-300"; 
-        } else if (match.visibleAtLocal === false) {
-            visText = `<br><span class="text-[8px] font-normal tracking-wide lowercase capitalize">Not Visible in ${cityName}</span>`;
-        } else {
-            visText = `<br><span class="text-[8px] font-normal tracking-wide lowercase capitalize">Global Event</span>`;
-        }
-        
-        return `<div class="${colorClass} font-bold text-[10px] mt-1.5 uppercase rounded px-1.5 py-0.5 border leading-tight pb-1">${match.event}${visText}</div>`;
-    }
-    return "";
 }
