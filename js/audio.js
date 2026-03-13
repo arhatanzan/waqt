@@ -90,18 +90,26 @@ function formatAudioTime(seconds) {
 function setAudioSpeed(speed) {
     const audio = document.getElementById("azaanAudio");
     if(audio) {
+        speed = Math.max(0.5, Math.min(5, parseFloat(speed) || 1));
         audio.playbackRate = speed;
         
         // Update button styling
         document.querySelectorAll('[id^="speed-"]').forEach(btn => {
-            btn.classList.remove("bg-emerald-200", "text-slate-900", "font-extrabold");
-            btn.classList.add("text-slate-700");
+            btn.classList.remove("bg-emerald-500", "text-white", "font-extrabold");
+            btn.classList.add("bg-slate-100", "text-slate-700");
         });
         
+        // Highlight the active button
         const activeBtn = document.getElementById(`speed-${speed}x`);
         if(activeBtn) {
-            activeBtn.classList.remove("text-slate-700");
-            activeBtn.classList.add("bg-emerald-200", "text-slate-900", "font-extrabold");
+            activeBtn.classList.remove("bg-slate-100", "text-slate-700");
+            activeBtn.classList.add("bg-emerald-500", "text-white", "font-extrabold");
+        }
+        
+        // Update custom speed input
+        const customInput = document.getElementById("customAudioSpeed");
+        if(customInput) {
+            customInput.value = speed;
         }
     }
 }
@@ -129,7 +137,8 @@ document.addEventListener("DOMContentLoaded", () => {
         // Set initial speed button highlight
         const activeBtn = document.getElementById("speed-1x");
         if(activeBtn) {
-            activeBtn.classList.add("bg-emerald-200", "text-slate-900", "font-extrabold");
+            activeBtn.classList.remove("bg-slate-100", "text-slate-700");
+            activeBtn.classList.add("bg-emerald-500", "text-white", "font-extrabold");
         }
         
         // Progress bar click seek

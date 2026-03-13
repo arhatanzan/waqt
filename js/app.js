@@ -63,6 +63,102 @@ function toggleView() {
     }
 }
 
+function toggleControlsCollapse() {
+    const controlsSection = document.getElementById('controls-section');
+    const contentDiv = document.getElementById('controls-content');
+    
+    if (controlsSection.classList.contains('collapsed')) {
+        // Expand
+        controlsSection.classList.remove('collapsed');
+        contentDiv.style.maxHeight = 'none';
+    } else {
+        // Collapse
+        controlsSection.classList.add('collapsed');
+        contentDiv.style.maxHeight = '0px';
+    }
+}
+
+function toggleTimetableCollapse() {
+    const timetableSection = document.getElementById('timetable-section');
+    const contentDiv = document.getElementById('timetable-content');
+    
+    if (timetableSection.classList.contains('collapsed')) {
+        // Expand
+        timetableSection.classList.remove('collapsed');
+        contentDiv.style.maxHeight = 'none';
+    } else {
+        // Collapse
+        timetableSection.classList.add('collapsed');
+        contentDiv.style.maxHeight = '0px';
+    }
+}
+
+function applyDisplaySettings() {
+    const viewFormat = document.querySelector('input[name="viewFormat"]:checked').value;
+    const is24Hour = document.querySelector('input[name="timeFormat"]:checked').value === "24";
+    const showSaher = document.getElementById("showSaher").checked;
+    const showEvents = document.getElementById("showEvents").checked;
+    const showTareeq = document.getElementById("showTareeq").checked;
+    
+    // Check if we have data to apply settings to
+    const tableBody = document.getElementById("tableBody");
+    if (!tableBody || tableBody.children.length === 0) {
+        alert("Please generate the timetable first using the Generate button.");
+        return;
+    }
+    
+    // First, switch view
+    if (viewFormat === 'calendar') {
+        document.getElementById('table-container').classList.add('hidden');
+        document.getElementById('calendar-container').classList.remove('hidden');
+    } else {
+        document.getElementById('table-container').classList.remove('hidden');
+        document.getElementById('calendar-container').classList.add('hidden');
+    }
+    
+    // For table view, update column visibility and time format
+    if (viewFormat === 'table') {
+        updateTableDisplay(showSaher, showEvents, showTareeq, is24Hour);
+    }
+}
+
+function updateTableDisplay(showSaher, showEvents, showTareeq, is24Hour) {
+    const tableHeader = document.getElementById("tableHeader");
+    const tableBody = document.getElementById("tableBody");
+    
+    // Update header column visibility
+    const headerCells = tableHeader.querySelectorAll('th');
+    headerCells.forEach(th => {
+        const colName = th.dataset.column;
+        if (colName === 'events') th.style.display = showEvents ? '' : 'none';
+        else if (colName === 'tareeq') th.style.display = showTareeq ? '' : 'none';
+        else if (colName === 'saher') th.style.display = showSaher ? '' : 'none';
+    });
+    
+    // Update each row's column visibility
+    const rows = tableBody.querySelectorAll('tr');
+    rows.forEach(row => {
+        const cells = row.querySelectorAll('td');
+        cells.forEach((cell, idx) => {
+            const colName = cell.dataset.column;
+            
+            // Hide/show based on column name
+            if (colName === 'events') cell.style.display = showEvents ? '' : 'none';
+            else if (colName === 'tareeq') cell.style.display = showTareeq ? '' : 'none';
+            else if (colName === 'saher') cell.style.display = showSaher ? '' : 'none';
+            
+            // Update time format if there's time data
+            const timeData = cell.dataset.time;
+            if (timeData) {
+                const [hour, min] = timeData.split(':').map(x => parseInt(x));
+                const dateObj = new Date();
+                dateObj.setHours(hour, min, 0);
+                cell.innerHTML = formatTime(dateObj, is24Hour);
+            }
+        });
+    });
+}
+
 window.onload = async function () {
     const today = new Date();
     const thirtyDaysLater = new Date();
@@ -116,12 +212,11 @@ async function generateTimetable() {
   tableHeader.innerHTML = ""; tableBody.innerHTML = ""; calendarGrid.innerHTML = "";
 
   const uniformTimeCol = "p-3 font-bold border-r border-slate-300 whitespace-normal break-words min-w-[80px]";
+  // Generate ALL columns regardless of settings - applyDisplaySettings will hide/show them
   let headersHTML = `<th class="p-3 font-bold border-r border-slate-300 w-24">Date</th><th class="p-3 font-bold border-r border-slate-300 w-16">Day</th>`;
-  
-  if (showEvents) headersHTML += `<th class="p-3 font-bold border-r border-slate-300 min-w-[140px]">Events</th>`;
-  if (showTareeq) headersHTML += `<th class="p-3 font-bold border-r border-slate-300 w-28">Tareeq</th>`;
-  if (showSaher) headersHTML += `<th class="${uniformTimeCol} text-emerald-800 bg-emerald-50/50">Tark-e-Saher<br><span class="text-[9px] font-normal text-slate-500 uppercase tracking-wide">10m Buffer</span></th>`;
-  
+  headersHTML += `<th class="p-3 font-bold border-r border-slate-300 min-w-[140px]" data-column="events">Events</th>`;
+  headersHTML += `<th class="p-3 font-bold border-r border-slate-300 w-28" data-column="tareeq">Tareeq</th>`;
+  headersHTML += `<th class="${uniformTimeCol} text-emerald-800 bg-emerald-50/50" data-column="saher">Tark-e-Saher<br><span class="text-[9px] font-normal text-slate-500 uppercase tracking-wide">10m Buffer</span></th>`;
   headersHTML += `
           <th class="${uniformTimeCol}">Namaz-e-Subah<br><span class="text-[9px] font-normal text-slate-500 uppercase tracking-wide">-18° Angle</span></th>
           <th class="${uniformTimeCol} text-amber-800 bg-amber-50/50">Tulu-e-Aftab<br><span class="text-[9px] font-normal text-slate-500 uppercase tracking-wide">+1m Buffer</span></th>
@@ -168,15 +263,16 @@ async function generateTimetable() {
             <td class="p-2 text-slate-600 text-xs border-r border-slate-200 font-bold tracking-wider text-center align-middle">${dateInfo.dayName}</td>
     `;
 
-    if (showEvents) rowHTML += `<td class="p-2 border-r border-slate-200 text-left align-top pt-3">${eventsHTML}</td>`;
-    if (showTareeq) rowHTML += `<td class="p-2 border-r border-slate-200 text-center align-top pt-3">${getTareeqInfo(hijriInfo.dayNum, hijriInfo.monthNum)}</td>`;
-    if (showSaher) rowHTML += `<td class="p-2 bg-emerald-50/30 align-middle">${formatTime(saher, is24Hour)}</td>`;
+    // Always include all columns - applyDisplaySettings will show/hide them
+    rowHTML += `<td class="p-2 border-r border-slate-200 text-left align-top pt-3" data-column="events">${eventsHTML}</td>`;
+    rowHTML += `<td class="p-2 border-r border-slate-200 text-center align-top pt-3" data-column="tareeq">${getTareeqInfo(hijriInfo.dayNum, hijriInfo.monthNum)}</td>`;
+    rowHTML += `<td class="p-2 bg-emerald-50/30 align-middle" data-column="saher" data-time="${saher.getHours()}:${String(saher.getMinutes()).padStart(2, '0')}">${formatTime(saher, is24Hour)}</td>`;
 
     rowHTML += `
-            <td class="p-2 align-middle">${formatTime(subah, is24Hour)}</td>
-            <td class="p-2 bg-amber-50/30 align-middle">${formatTime(tulu, is24Hour)}</td>
-            <td class="p-2 align-middle">${formatTime(zohar, is24Hour)}</td>
-            <td class="p-2 bg-indigo-50/30 align-middle border-r-0">${formatTime(maghrib, is24Hour)}</td>
+            <td class="p-2 align-middle" data-time="${subah.getHours()}:${String(subah.getMinutes()).padStart(2, '0')}">${formatTime(subah, is24Hour)}</td>
+            <td class="p-2 bg-amber-50/30 align-middle" data-time="${tulu.getHours()}:${String(tulu.getMinutes()).padStart(2, '0')}">${formatTime(tulu, is24Hour)}</td>
+            <td class="p-2 align-middle" data-time="${zohar.getHours()}:${String(zohar.getMinutes()).padStart(2, '0')}">${formatTime(zohar, is24Hour)}</td>
+            <td class="p-2 bg-indigo-50/30 align-middle border-r-0" data-time="${maghrib.getHours()}:${String(maghrib.getMinutes()).padStart(2, '0')}">${formatTime(maghrib, is24Hour)}</td>
         </tr>
     `;
     tableBody.insertAdjacentHTML("beforeend", rowHTML);
@@ -218,20 +314,219 @@ async function generateTimetable() {
   }
 }
 
+// PDF Export Configuration
+const PDF_EXPORT_CONFIG = {
+  margin: [15, 15, 15, 15],
+  filename: "Waqt-e-Namaz-Timetable.pdf",
+  image: { type: "png", quality: 0.98 },
+  html2canvas: { scale: 2, logging: false, useCORS: true, backgroundColor: "#ffffff" },
+  jsPDF: { unit: "mm", format: "a4", orientation: "portrait" },
+  pagebreak: { mode: 'avoid' }
+};
+
+/**
+ * Main export to PDF function
+ * Validates data, creates PDF content, and exports to file
+ */
 function exportPDF() {
-  document.getElementById("controls-section").style.display = "none";
-  const element = document.getElementById("app-container");
+  try {
+    // Validate library availability
+    if (typeof html2pdf === 'undefined') {
+      alert("PDF library is not loaded. Please refresh the page and try again.");
+      return;
+    }
+    
+    // Validate timetable data exists
+    const tableBody = document.getElementById("tableBody");
+    if (!tableBody || tableBody.children.length === 0) {
+      alert("Please generate the timetable first.");
+      return;
+    }
+    
+    // Create PDF content
+    const pdfContent = createPdfContent();
+    
+    // Export content to PDF
+    exportContentToPdf(pdfContent);
+    
+  } catch (error) {
+    console.error("Export PDF error:", error);
+    alert("An error occurred while exporting PDF: " + error.message);
+  }
+}
+
+/**
+ * Creates the complete PDF document structure
+ * @returns {HTMLElement} Container element with header, table, and footer
+ */
+function createPdfContent() {
+  const container = document.createElement("div");
+  container.style.backgroundColor = "white";
+  container.style.padding = "10px";
   
-  const opt = { 
-    margin: [0.3, 0.3, 0.3, 0.3], 
-    filename: "Waqt-e-Namaz-Comprehensive.pdf", 
-    image: { type: "jpeg", quality: 0.98 }, 
-    html2canvas: { scale: 2 }, 
-    jsPDF: { unit: "in", format: "a3", orientation: "landscape" },
-    pagebreak: { mode: ['avoid-all', 'css', 'legacy'] }
-  };
+  // Add header section
+  container.appendChild(createPdfHeader());
   
-  html2pdf().set(opt).from(element).save().then(() => { 
-    document.getElementById("controls-section").style.display = "block"; 
+  // Add timetable section
+  container.appendChild(createPdfTable());
+  
+  // Add footer section
+  container.appendChild(createPdfFooter());
+  
+  return container;
+}
+
+/**
+ * Creates the header section of the PDF
+ * @returns {HTMLElement} Header element with title and location info
+ */
+function createPdfHeader() {
+  const locationDisplay = document.getElementById("location-display").innerText;
+  const headerYears = document.getElementById("header-years").innerText;
+  
+  const header = document.createElement("div");
+  header.style.marginBottom = "10px";
+  header.style.borderBottom = "2px solid #1e293b";
+  header.style.paddingBottom = "8px";
+  
+  header.innerHTML = `
+    <h1 style="font-size: 22px; font-weight: bold; color: #0d3b2d; margin: 0 0 5px 0; letter-spacing: 1px;">WAQT-E-NAMAZ</h1>
+    <p style="font-size: 12px; color: #475569; margin: 3px 0; font-weight: 600;">${locationDisplay}</p>
+    <p style="font-size: 10px; color: #64748b; margin: 3px 0;">${headerYears}</p>
+    <p style="font-size: 9px; color: #94a3b8; margin: 3px 0;">Prayer Times Timetable</p>
+  `;
+  
+  return header;
+}
+
+/**
+ * Creates the table section of the PDF
+ * @returns {HTMLElement} Table element with headers and body rows
+ */
+function createPdfTable() {
+  const sourceTableHeader = document.getElementById("tableHeader");
+  const sourceTableBody = document.getElementById("tableBody");
+  
+  const table = document.createElement("table");
+  table.style.width = "100%";
+  table.style.borderCollapse = "collapse";
+  table.style.fontSize = "9px";
+  table.style.fontFamily = "Arial, sans-serif";
+  
+  // Add table header
+  table.appendChild(createTableHeaderSection(sourceTableHeader));
+  
+  // Add table body
+  table.appendChild(createTableBodySection(sourceTableBody));
+  
+  return table;
+}
+
+/**
+ * Creates the table header section
+ * @param {HTMLElement} sourceHeader - Original table header element
+ * @returns {HTMLElement} New thead element with styled cells
+ */
+function createTableHeaderSection(sourceHeader) {
+  const thead = document.createElement("thead");
+  thead.style.backgroundColor = "#f1f5f9";
+  thead.style.borderBottom = "2px solid #cbd5e1";
+  
+  const headerRow = document.createElement("tr");
+  const sourceHeaderCells = sourceHeader.querySelectorAll("th");
+  
+  sourceHeaderCells.forEach((sourceCell) => {
+    const colName = sourceCell.dataset.column;
+    const isHidden = getComputedStyle(sourceCell).display === "none";
+    
+    // Skip hidden columns
+    if (isHidden && colName) return;
+    
+    const th = document.createElement("th");
+    th.style.cssText = "padding: 5px; text-align: center; border: 1px solid #cbd5e1; font-weight: 600; color: #1e293b; word-wrap: break-word; max-width: 60px; font-size: 8px;";
+    th.innerHTML = sourceCell.innerText;
+    
+    headerRow.appendChild(th);
   });
+  
+  thead.appendChild(headerRow);
+  return thead;
+}
+
+/**
+ * Creates the table body section
+ * @param {HTMLElement} sourceBody - Original table body element
+ * @returns {HTMLElement} New tbody element with styled rows
+ */
+function createTableBodySection(sourceBody) {
+  const tbody = document.createElement("tbody");
+  const sourceRows = sourceBody.querySelectorAll("tr");
+  
+  sourceRows.forEach((sourceRow, rowIndex) => {
+    const newRow = document.createElement("tr");
+    newRow.style.backgroundColor = rowIndex % 2 === 0 ? "#ffffff" : "#f8fafc";
+    newRow.style.borderBottom = "1px solid #e2e8f0";
+    
+    const sourceCells = sourceRow.querySelectorAll("td");
+    sourceCells.forEach((sourceCell) => {
+      const colName = sourceCell.dataset.column;
+      const isHidden = getComputedStyle(sourceCell).display === "none";
+      
+      // Skip hidden columns
+      if (isHidden && colName) return;
+      
+      const td = document.createElement("td");
+      td.style.cssText = "padding: 5px; border: 1px solid #e2e8f0; text-align: center; font-size: 9px; color: #334155; word-wrap: break-word; max-width: 70px;";
+      td.innerHTML = sourceCell.innerHTML;
+      
+      newRow.appendChild(td);
+    });
+    
+    tbody.appendChild(newRow);
+  });
+  
+  return tbody;
+}
+
+/**
+ * Creates the footer section of the PDF
+ * @returns {HTMLElement} Footer element with generation timestamp
+ */
+function createPdfFooter() {
+  const footer = document.createElement("div");
+  footer.style.cssText = "margin-top: 10px; padding-top: 8px; border-top: 1px solid #cbd5e1; font-size: 8px; color: #94a3b8; text-align: center;";
+  footer.innerHTML = `Generated on ${new Date().toLocaleString()}<br>Crafted by Kaif Abbas`;
+  
+  return footer;
+}
+
+/**
+ * Exports content to PDF using html2pdf library
+ * Uses off-screen positioning to prevent visual flicker
+ * @param {HTMLElement} content - Content element to export
+ */
+function exportContentToPdf(content) {
+  // Create wrapper positioned off-screen to avoid visual flicker
+  const wrapper = document.createElement("div");
+  wrapper.style.cssText = "position: absolute; left: -9999px; top: -9999px; width: 100%;";
+  wrapper.appendChild(content);
+  document.body.appendChild(wrapper);
+  
+  html2pdf()
+    .set(PDF_EXPORT_CONFIG)
+    .from(content)
+    .save()
+    .then(() => {
+      console.log("PDF exported successfully");
+    })
+    .catch((error) => {
+      console.error("PDF export error:", error);
+      alert("Error exporting PDF: " + error.message);
+    })
+    .finally(() => {
+      // Clean up: remove wrapper from DOM
+      if (wrapper.parentNode) {
+        document.body.removeChild(wrapper);
+      }
+    });
 }

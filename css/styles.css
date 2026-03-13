@@ -1,9 +1,76 @@
 /* css/styles.css */
+* {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
 ::-webkit-scrollbar { width: 8px; height: 8px; }
 ::-webkit-scrollbar-track { background: #f1f1f1; }
 ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
 ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
 
+/* Sticky Table Header */
+.sticky-header tr {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  background-color: #f3f4f6;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+/* Collapsible Controls */
+#controls-header {
+  border-radius: 0 0 0.75rem 0.75rem;
+}
+
+#controls-section.collapsed #controls-header {
+  border-radius: 0.75rem;
+}
+
+#controls-section.collapsed #controls-content {
+  max-height: 0 !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  overflow: hidden !important;
+}
+
+#controls-section.collapsed #collapse-icon {
+  transform: rotate(-90deg);
+}
+
+#controls-section.collapsed {
+  margin-bottom: 0 !important;
+}
+
+.controls-content {
+  will-change: max-height;
+}
+
+/* Collapsible Timetable */
+#timetable-header {
+  border-radius: 0 0 0.75rem 0.75rem;
+}
+
+#timetable-section.collapsed #timetable-header {
+  border-radius: 0.75rem;
+}
+
+#timetable-section.collapsed #timetable-content {
+  max-height: 0 !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  overflow: hidden !important;
+}
+
+#timetable-section.collapsed #timetable-collapse-icon {
+  transform: rotate(-90deg);
+}
+
+.timetable-content {
+  will-change: max-height;
+}
+
+/* Search Results Styling */
 .search-results {
   position: absolute;
   z-index: 50;
@@ -11,12 +78,31 @@
   max-height: 200px;
   overflow-y: auto;
   background: white;
-  border: 1px solid #e2e8f0;
+  border: 2px solid #d1d5db;
   border-radius: 0.5rem;
   box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
   display: none;
 }
 
+.search-results > div {
+  padding: 0.75rem 1rem;
+  font-size: 0.875rem;
+  cursor: pointer;
+  border-bottom: 1px solid #f1f5f9;
+  transition: all 0.2s ease;
+}
+
+.search-results > div:hover {
+  background-color: #ecfdf5;
+  color: #047857;
+  font-weight: 500;
+}
+
+.search-results > div:last-child {
+  border-bottom: none;
+}
+
+/* Modal Styling */
 .modal-bg {
   display: none; 
   position: fixed;
@@ -31,14 +117,57 @@
 .modal-content {
   background: white;
   padding: 2rem;
-  border-radius: 1rem;
+  border-radius: 0.875rem;
   max-width: 32rem;
   width: 90%;
-  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+  animation: slideUp 0.3s ease-out;
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(1rem);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Input field styling */
+input[type="number"]::-webkit-outer-spin-button,
+input[type="number"]::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+input[type="number"] {
+  -moz-appearance: textfield;
+}
+
+/* Input focus enhancement */
+input:focus,
+textarea:focus {
+  box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.1);
 }
 
 /* Print/PDF specific utility classes */
 .avoid-page-break {
   page-break-inside: avoid;
   break-inside: avoid;
+}
+
+/* Label styling */
+label {
+  user-select: none;
+}
+
+/* Button transitions */
+button {
+  transition: all 0.2s ease;
+}
+
+button:active {
+  transform: scale(0.98);
 }
