@@ -46,32 +46,6 @@ function formatHtmlDate(dateObj) {
     return `${y}-${m}-${d}`;
 }
 
-function getAstrologyInfo(date, lat, lng, cityName) {
-    const d = (date.getTime() - Date.UTC(2000, 0, 1, 12, 0, 0)) / 86400000;
-    let L = (218.316 + 13.176396 * d) % 360; 
-    if (L < 0) L += 360;
-    
-    const zodiacs = ["Aries", "Taurus", "Gemini", "Cancer", "Leo", "Virgo", "Libra", "Scorpio", "Sagittarius", "Capricorn", "Aquarius", "Pisces"];
-    const zIndex = Math.floor(L / 30);
-    const zodiac = zodiacs[zIndex];
-    
-    let specialStatus = "";
-    if (zIndex === 7) specialStatus = `<div class="text-red-600 font-bold text-[10px] mt-1.5 uppercase tracking-wide">Qamar Dar Aqrab</div>`;
-    else if (zIndex === 1) specialStatus = `<div class="text-emerald-600 font-bold text-[10px] mt-1.5 uppercase tracking-wide">Sharaf-e-Qamar</div>`;
-
-    const phaseInfo = SunCalc.getMoonIllumination(date);
-    let phaseName = "Waning Moon";
-    if (phaseInfo.phase < 0.05) phaseName = "New Moon";
-    else if (phaseInfo.phase > 0.95) phaseName = "Full Moon";
-    else if (phaseInfo.phase < 0.5) phaseName = "Waxing Moon";
-
-    let eclipseAlert = getEclipseAlertForDate(date, cityName);
-
-    return `<div class="text-[11px] font-bold text-slate-800">Moon in ${zodiac}</div>
-            <div class="text-[10px] text-slate-500 font-medium">${phaseName}</div>
-            ${specialStatus}${eclipseAlert}`;
-}
-
 function getTareeqInfo(hijriDayNum, hijriMonthNum) {
     if (typeof monthSpecificNahas !== 'undefined' && monthSpecificNahas[hijriMonthNum] && monthSpecificNahas[hijriMonthNum].includes(hijriDayNum)) {
         return `<div class="text-red-700 font-extrabold text-[11px] uppercase tracking-wide">Nahas Akbar</div>
