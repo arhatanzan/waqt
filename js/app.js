@@ -8,31 +8,36 @@ SunCalc.addTime(-4.5, "maghribExact", "maghribEnd");
 
 // --- DARK MODE TOGGLE ---
 function toggleTheme() {
-    const body = document.getElementById('app-body');
-    const themeToggle = document.getElementById('themToggle');
+    const isDark = AppState.theme.toggle();
+    const body = DOMUtils.getElement('app_body');
+    const themeToggle = DOMUtils.getElement('theme_toggle');
     
-    body.classList.toggle('dark-mode');
-    const isDark = body.classList.contains('dark-mode');
-    
-    // Update button text
-    themeToggle.textContent = isDark ? '☀️' : '🌙';
-    
-    // Save preference to localStorage
-    localStorage.setItem('theme', isDark ? 'dark' : 'light');
+    if (isDark) {
+        body?.classList.add(CONFIG.CLASSES.dark_mode);
+        localStorage.setItem(CONFIG.STORAGE.theme_key, CONFIG.STORAGE.dark_mode_value);
+        if (themeToggle) themeToggle.textContent = '☀️';
+    } else {
+        body?.classList.remove(CONFIG.CLASSES.dark_mode);
+        localStorage.setItem(CONFIG.STORAGE.theme_key, CONFIG.STORAGE.light_mode_value);
+        if (themeToggle) themeToggle.textContent = '🌙';
+    }
 }
 
 // Initialize theme from localStorage
 function initializeTheme() {
-    const savedTheme = localStorage.getItem('theme') || 'light';
-    const body = document.getElementById('app-body');
-    const themeToggle = document.getElementById('themToggle');
+    const savedTheme = localStorage.getItem(CONFIG.STORAGE.theme_key) || CONFIG.STORAGE.light_mode_value;
+    const isDarkMode = savedTheme === CONFIG.STORAGE.dark_mode_value;
+    const body = DOMUtils.getElement('app_body');
+    const themeToggle = DOMUtils.getElement('theme_toggle');
     
-    if (savedTheme === 'dark') {
-        body.classList.add('dark-mode');
-        themeToggle.textContent = '☀️';
+    AppState.theme.set(isDarkMode);
+    
+    if (isDarkMode) {
+        body?.classList.add(CONFIG.CLASSES.dark_mode);
+        if (themeToggle) themeToggle.textContent = '☀️';
     } else {
-        body.classList.remove('dark-mode');
-        themeToggle.textContent = '🌙';
+        body?.classList.remove(CONFIG.CLASSES.dark_mode);
+        if (themeToggle) themeToggle.textContent = '🌙';
     }
 }
 
@@ -108,34 +113,28 @@ function toggleView() {
     }
 }
 
-function toggleControlsCollapse() {
-    const controlsSection = document.getElementById('controls-section');
-    const contentDiv = document.getElementById('controls-content');
+// Reusable collapse/expand toggle
+function toggleCollapse(sectionKey, contentKey) {
+    const section = DOMUtils.getElement(sectionKey);
+    const content = DOMUtils.getElement(contentKey);
     
-    if (controlsSection.classList.contains('collapsed')) {
-        // Expand
-        controlsSection.classList.remove('collapsed');
-        contentDiv.style.maxHeight = 'none';
+    if (!section || !content) return;
+    
+    if (section.classList.contains(CONFIG.CLASSES.collapsed)) {
+        section.classList.remove(CONFIG.CLASSES.collapsed);
+        content.style.maxHeight = 'none';
     } else {
-        // Collapse
-        controlsSection.classList.add('collapsed');
-        contentDiv.style.maxHeight = '0px';
+        section.classList.add(CONFIG.CLASSES.collapsed);
+        content.style.maxHeight = '0px';
     }
 }
 
+function toggleControlsCollapse() {
+    toggleCollapse('controls_section', 'controls_content');
+}
+
 function toggleTimetableCollapse() {
-    const timetableSection = document.getElementById('timetable-section');
-    const contentDiv = document.getElementById('timetable-content');
-    
-    if (timetableSection.classList.contains('collapsed')) {
-        // Expand
-        timetableSection.classList.remove('collapsed');
-        contentDiv.style.maxHeight = 'none';
-    } else {
-        // Collapse
-        timetableSection.classList.add('collapsed');
-        contentDiv.style.maxHeight = '0px';
-    }
+    toggleCollapse('timetable_section', 'timetable_content');
 }
 
 function applyDisplaySettings() {

@@ -4,7 +4,7 @@
   -moz-osx-font-smoothing: grayscale;
 }
 
-/* Dark Mode Styles */
+/* Dark Mode Styles - CSS Variables */
 :root {
   --bg-primary: #f1f5f9;
   --bg-secondary: #ffffff;
@@ -21,49 +21,35 @@ body.dark-mode {
   --text-primary: #e8f0f8;
   --text-secondary: #9fb3d5;
   --border-color: #3d5a7f;
-}
-
-body.dark-mode {
   background-color: var(--bg-primary);
   color: var(--text-primary);
+}
+
+/* Dark Mode - Text Colors */
+body.dark-mode .bg-white,
+body.dark-mode .text-slate-800,
+body.dark-mode .text-slate-700 {
+  color: var(--text-primary);
+}
+
+body.dark-mode .text-slate-600,
+body.dark-mode .text-slate-500,
+body.dark-mode .text-slate-400 {
+  color: var(--text-secondary);
 }
 
 body.dark-mode .bg-white {
   background-color: var(--bg-secondary);
 }
 
-body.dark-mode .text-slate-800 {
-  color: var(--text-primary);
-}
-
-body.dark-mode .text-slate-700 {
-  color: var(--text-primary);
-}
-
-body.dark-mode .text-slate-600 {
-  color: var(--text-secondary);
-}
-
-body.dark-mode .text-slate-500 {
-  color: var(--text-secondary);
-}
-
-body.dark-mode .text-slate-400 {
-  color: var(--text-secondary);
-}
-
-body.dark-mode .border-slate-300 {
-  border-color: var(--border-color);
-}
-
-body.dark-mode .border-slate-200 {
-  border-color: var(--border-color);
-}
-
+/* Dark Mode - Borders */
+body.dark-mode .border-slate-300,
+body.dark-mode .border-slate-200,
 body.dark-mode .border-slate-100 {
   border-color: var(--border-color);
 }
 
+/* Dark Mode - Backgrounds */
 body.dark-mode .bg-slate-50 {
   background-color: #2c4052;
 }
@@ -76,16 +62,19 @@ body.dark-mode .hover\:bg-slate-50:hover {
   background-color: var(--bg-tertiary);
 }
 
-/* Table styling in dark mode */
-body.dark-mode .sticky-header tr {
+/* Dark Mode - Table Styling */
+body.dark-mode .sticky-header tr,
+body.dark-mode .sticky-header th {
   background-color: #2c4052;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+  border-color: var(--border-color);
 }
 
 body.dark-mode .sticky-header th {
   color: #e8f0f8;
-  background-color: #2c4052;
-  border-color: var(--border-color);
+}
+
+body.dark-mode .sticky-header tr {
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
 }
 
 body.dark-mode td {
@@ -101,12 +90,14 @@ body.dark-mode tbody tr:nth-child(even) {
   background-color: #233548;
 }
 
-/* Colored backgrounds in dark mode */
-body.dark-mode .bg-emerald-50 {
+/* Dark Mode - Colored Elements */
+body.dark-mode .bg-emerald-50,
+body.dark-mode .bg-emerald-100 {
   background-color: #1a3d3f;
 }
 
-body.dark-mode .text-emerald-800 {
+body.dark-mode .text-emerald-800,
+body.dark-mode .text-emerald-700 {
   color: #6ee7b7;
 }
 
@@ -126,15 +117,7 @@ body.dark-mode .text-indigo-800 {
   color: #a5b4fc;
 }
 
-body.dark-mode .bg-emerald-100 {
-  background-color: #1a3d3f;
-}
-
-body.dark-mode .text-emerald-700 {
-  color: #6ee7b7;
-}
-
-/* Input styling */
+/* Dark Mode - Form Inputs */
 body.dark-mode input[type="text"],
 body.dark-mode input[type="date"],
 body.dark-mode input[type="number"],
@@ -144,26 +127,36 @@ body.dark-mode textarea {
   border-color: var(--border-color);
 }
 
-/* Modal styling */
+/* Dark Mode - Modal */
 body.dark-mode .modal-bg {
   background: rgba(15, 23, 42, 0.9);
 }
 
-body.dark-mode .modal-content {
-  background-color: var(--bg-secondary);
-  color: var(--text-primary);
-  border: 1px solid var(--border-color);
-}
-
+body.dark-mode .modal-content,
 body.dark-mode .modal-content h2 {
+  background-color: var(--bg-secondary);
   color: var(--text-primary);
   border-color: var(--border-color);
 }
 
-::-webkit-scrollbar { width: 8px; height: 8px; }
-::-webkit-scrollbar-track { background: #f1f1f1; }
-::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
-::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+/* Scrollbar Styling */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #f1f1f1;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
 
 /* Sticky Table Header */
 .sticky-header tr {
@@ -174,58 +167,46 @@ body.dark-mode .modal-content h2 {
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
 }
 
-/* Collapsible Controls */
-#controls-header {
-  border-radius: 0 0 0.75rem 0.75rem;
-}
-
-#controls-section.collapsed #controls-header {
-  border-radius: 0.75rem;
-}
-
-#controls-section.collapsed #controls-content {
-  max-height: 0 !important;
-  padding: 0 !important;
-  margin: 0 !important;
-  overflow: hidden !important;
-}
-
-#controls-section.collapsed #collapse-icon {
-  transform: rotate(-90deg);
-}
-
-#controls-section.collapsed {
-  margin-bottom: 0 !important;
-}
-
-#controls-section.collapsed + #timetable-section {
-  margin-top: 0.5rem !important;
-}
-
-.controls-content {
-  will-change: max-height;
-}
-
-/* Collapsible Timetable */
+/* Collapsible Controls & Timetable - Consolidated */
+#controls-header,
 #timetable-header {
   border-radius: 0 0 0.75rem 0.75rem;
 }
 
+#controls-section.collapsed #controls-header,
 #timetable-section.collapsed #timetable-header {
   border-radius: 0.75rem;
 }
 
+/* Collapsed Content Animation */
+#controls-section.collapsed #controls-content,
 #timetable-section.collapsed #timetable-content {
-  max-height: 0 !important;
-  padding: 0 !important;
-  margin: 0 !important;
-  overflow: hidden !important;
+  max-height: 0;
+  padding: 0;
+  margin: 0;
+  overflow: hidden;
 }
 
+#controls-section.collapsed #collapse-icon,
 #timetable-section.collapsed #timetable-collapse-icon {
   transform: rotate(-90deg);
 }
 
+/* Spacing for Collapsed Sections */
+#controls-section.collapsed {
+  margin-bottom: 0;
+}
+
+#controls-section.collapsed + #timetable-section {
+  margin-top: 0;
+}
+
+#controls-section:not(.collapsed) + #timetable-section {
+  margin-top: 2.5rem;
+}
+
+/* Content Performance Optimization */
+.controls-content,
 .timetable-content {
   will-change: max-height;
 }
@@ -264,7 +245,7 @@ body.dark-mode .modal-content h2 {
 
 /* Modal Styling */
 .modal-bg {
-  display: none; 
+  display: none;
   position: fixed;
   inset: 0;
   background: rgba(15, 23, 42, 0.6);
