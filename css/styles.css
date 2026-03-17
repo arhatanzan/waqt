@@ -37,7 +37,7 @@ body.dark-mode .text-black {
 body.dark-mode .text-slate-600,
 body.dark-mode .text-slate-500,
 body.dark-mode .text-slate-400 {
-  color: var(--text-secondary);
+  color: #cbd5e1;
 }
 
 body.dark-mode .bg-white {
@@ -115,8 +115,17 @@ body.dark-mode .bg-indigo-50 {
   background-color: #2a2d4a;
 }
 
+body.dark-mode .bg-indigo-100,
+body.dark-mode .bg-indigo-200 {
+  background-color: #3730a3;
+}
+
 body.dark-mode .text-indigo-800 {
   color: #a5b4fc;
+}
+
+body.dark-mode .border-indigo-300 {
+  border-color: #6366f1;
 }
 
 /* Event colors in dark mode */
@@ -131,6 +140,20 @@ body.dark-mode .text-green-700 {
 body.dark-mode .text-black,
 body.dark-mode .font-bold.text-black {
   color: var(--text-primary);
+}
+
+/* Ensure proper text contrast on colored backgrounds */
+body.dark-mode .bg-emerald-50/30,
+body.dark-mode .bg-emerald-50/50 {
+  background-color: rgba(26, 61, 63, 0.8);
+}
+
+body.dark-mode .bg-amber-50/30 {
+  background-color: rgba(61, 50, 32, 0.8);
+}
+
+body.dark-mode .bg-indigo-50/30 {
+  background-color: rgba(42, 45, 74, 0.8);
 }
 
 /* Dark Mode - Form Inputs */
