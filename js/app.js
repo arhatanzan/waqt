@@ -6,6 +6,51 @@
 SunCalc.addTime(-19, "saherExact", "saherEnd"); 
 SunCalc.addTime(-4.5, "maghribExact", "maghribEnd"); 
 
+// --- DARK MODE TOGGLE ---
+function toggleTheme() {
+    const body = document.getElementById('app-body');
+    const themeToggle = document.getElementById('themToggle');
+    
+    body.classList.toggle('dark-mode');
+    const isDark = body.classList.contains('dark-mode');
+    
+    // Update button text
+    themeToggle.textContent = isDark ? '☀️' : '🌙';
+    
+    // Save preference to localStorage
+    localStorage.setItem('theme', isDark ? 'dark' : 'light');
+}
+
+// Initialize theme from localStorage
+function initializeTheme() {
+    const savedTheme = localStorage.getItem('theme') || 'light';
+    const body = document.getElementById('app-body');
+    const themeToggle = document.getElementById('themToggle');
+    
+    if (savedTheme === 'dark') {
+        body.classList.add('dark-mode');
+        themeToggle.textContent = '☀️';
+    } else {
+        body.classList.remove('dark-mode');
+        themeToggle.textContent = '🌙';
+    }
+}
+
+// --- DATE VALIDATION ---
+function updateEndDateMin() {
+    const startDate = document.getElementById('startDate').value;
+    const endDate = document.getElementById('endDate');
+    
+    if (startDate) {
+        endDate.min = startDate;
+        
+        // Check if current endDate is before startDate
+        if (endDate.value && endDate.value < startDate) {
+            endDate.value = startDate;
+        }
+    }
+}
+
 // --- UI & SEARCH CONTROLS ---
 const searchInput = document.getElementById("citySearch");
 const searchResults = document.getElementById("searchResults");
@@ -160,6 +205,8 @@ function updateTableDisplay(showSaher, showEvents, showTareeq, is24Hour) {
 }
 
 window.onload = async function () {
+    initializeTheme();
+    
     const today = new Date();
     const thirtyDaysLater = new Date();
     thirtyDaysLater.setDate(today.getDate() + 29);
@@ -169,6 +216,7 @@ window.onload = async function () {
         document.getElementById("endDate").value = formatHtmlDate(thirtyDaysLater);
         document.getElementById("citySearch").value = "Lucknow";
         
+        updateEndDateMin();
         await updateLiveDates(); 
         updateLiveClock();
         await generateTimetable(); 
@@ -192,6 +240,17 @@ async function generateTimetable() {
   
   let start = new Date(document.getElementById("startDate").value);
   let end = new Date(document.getElementById("endDate").value);
+  
+  // DATE VALIDATION: Check if endDate is not less than startDate
+  if (end < start) {
+    alert("End date cannot be earlier than the start date. Please select valid dates.");
+    if(genBtn) {
+        genBtn.innerText = "Generate";
+        genBtn.disabled = false;
+        genBtn.classList.remove("opacity-50", "cursor-wait");
+    }
+    return;
+  }
   
   const showSaher = document.getElementById("showSaher").checked;
   const showEvents = document.getElementById("showEvents").checked;

@@ -12,7 +12,7 @@
     
     <link rel="stylesheet" href="css/styles.css">
   </head>
-  <body class="bg-slate-50 text-slate-800 font-sans min-h-screen p-4 md:p-8">
+  <body class="bg-slate-50 text-slate-800 font-sans min-h-screen p-4 md:p-8 transition-colors duration-300" id="app-body">
     <div class="max-w-7xl mx-auto relative pb-10" id="app-container">
       
       <div class="bg-gradient-to-r from-emerald-900 via-emerald-800 to-emerald-900 text-white px-6 py-4 rounded-t-xl shadow-lg flex flex-col md:flex-row items-center justify-between avoid-page-break transition-all duration-500" id="pdf-header">
@@ -22,22 +22,25 @@
             <p class="text-emerald-100 mt-0.5 text-xs uppercase tracking-widest letter-spacing-wide" id="location-display">Dynamic Astronomical Timings</p>
         </div>
 
-        <div class="flex items-center space-x-3 bg-emerald-900/50 backdrop-blur-md p-3 rounded-xl border border-emerald-400/40 shadow-lg">
-           <div class="relative w-16 h-16 rounded-full border-2 border-emerald-300 bg-emerald-950/60 shadow-lg">
-               <div id="hourHand" class="absolute w-1.5 h-4 bg-white top-4 left-1/2 -ml-1 origin-bottom rounded-full transition-transform duration-75 drop-shadow-lg"></div>
-               <div id="minHand" class="absolute w-1 h-5 bg-emerald-200 top-2.5 left-1/2 -ml-0.5 origin-bottom rounded-full transition-transform duration-75 drop-shadow-lg"></div>
-               <div id="secHand" class="absolute w-px h-6 bg-red-400 top-1 left-1/2 origin-bottom transition-transform duration-75"></div>
-               <div class="absolute w-2 h-2 bg-white rounded-full top-1/2 left-1/2 -mt-1 -ml-1 shadow-lg"></div>
-           </div>
-           <div class="text-left">
-               <div id="digitalTime" class="text-2xl font-bold tracking-wider text-emerald-200 font-mono drop-shadow-md">00:00:00</div>
-               <div id="liveGregDate" class="text-[10px] font-medium text-emerald-200 mt-1 uppercase tracking-wide"></div>
-               <div id="liveHijriDate" class="text-[10px] font-bold text-emerald-100 mt-0.5"></div>
+        <div class="flex items-center gap-4">
+           <button id="themToggle" onclick="toggleTheme()" class="px-3 py-2 bg-emerald-700 hover:bg-emerald-600 text-white rounded-lg transition-all shadow-md text-lg" title="Toggle Dark Mode">🌙</button>
+           <div class="flex items-center space-x-3 bg-emerald-900/50 backdrop-blur-md p-3 rounded-xl border border-emerald-400/40 shadow-lg">
+               <div class="relative w-16 h-16 rounded-full border-2 border-emerald-300 bg-emerald-950/60 shadow-lg">
+                   <div id="hourHand" class="absolute w-1.5 h-4 bg-white top-4 left-1/2 -ml-1 origin-bottom rounded-full transition-transform duration-75 drop-shadow-lg"></div>
+                   <div id="minHand" class="absolute w-1 h-5 bg-emerald-200 top-2.5 left-1/2 -ml-0.5 origin-bottom rounded-full transition-transform duration-75 drop-shadow-lg"></div>
+                   <div id="secHand" class="absolute w-px h-6 bg-red-400 top-1 left-1/2 origin-bottom transition-transform duration-75"></div>
+                   <div class="absolute w-2 h-2 bg-white rounded-full top-1/2 left-1/2 -mt-1 -ml-1 shadow-lg"></div>
+               </div>
+               <div class="text-left">
+                   <div id="digitalTime" class="text-2xl font-bold tracking-wider text-emerald-200 font-mono drop-shadow-md">00:00:00</div>
+                   <div id="liveGregDate" class="text-[10px] font-medium text-emerald-200 mt-1 uppercase tracking-wide"></div>
+                   <div id="liveHijriDate" class="text-[10px] font-bold text-emerald-100 mt-0.5"></div>
+               </div>
            </div>
         </div>
       </div>
 
-      <div class="bg-white rounded-b-xl shadow-md border-t-2 border-emerald-600/20 mb-6 avoid-page-break transition-all duration-300" id="controls-section">
+      <div class="bg-white rounded-b-xl shadow-md border-t-2 border-emerald-600/20 mb-2 avoid-page-break transition-all duration-300" id="controls-section">
         <!-- Collapse Header -->
         <div class="flex items-center justify-between p-4 select-none cursor-pointer hover:bg-slate-50 transition-colors" id="controls-header" onclick="toggleControlsCollapse()">
           <h2 class="text-base font-bold text-slate-700 uppercase tracking-wide">Controls</h2>
@@ -61,7 +64,7 @@
             </div>
             <div class="flex flex-col">
               <label class="text-sm font-semibold text-slate-600 mb-2">From</label>
-              <input type="date" id="startDate" class="p-2.5 bg-slate-50 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500 focus:outline-none"/>
+              <input type="date" id="startDate" onchange="updateEndDateMin()" class="p-2.5 bg-slate-50 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500 focus:outline-none"/>
             </div>
             <div class="flex flex-col">
               <label class="text-sm font-semibold text-slate-600 mb-2">To</label>
