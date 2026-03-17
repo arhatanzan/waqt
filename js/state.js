@@ -10,7 +10,7 @@
 const AppState = {
   // ======= THEME STATE =======
   theme: {
-    isDark: false,
+    isDark: true,  // Dark mode is now default
     
     toggle() {
       this.isDark = !this.isDark;

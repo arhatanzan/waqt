@@ -143,7 +143,8 @@ const CONFIG = {
   STORAGE: {
     theme_key: 'theme',
     dark_mode_value: 'dark',
-    light_mode_value: 'light'
+    light_mode_value: 'light',
+    default_theme: 'dark'  // Set dark mode as default
   },
 
   // ======= GRID & TABLE =======

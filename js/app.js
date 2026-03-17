@@ -25,7 +25,7 @@ function toggleTheme() {
 
 // Initialize theme from localStorage
 function initializeTheme() {
-    const savedTheme = localStorage.getItem(CONFIG.STORAGE.theme_key) || CONFIG.STORAGE.light_mode_value;
+    const savedTheme = localStorage.getItem(CONFIG.STORAGE.theme_key) || CONFIG.STORAGE.default_theme;
     const isDarkMode = savedTheme === CONFIG.STORAGE.dark_mode_value;
     const body = DOMUtils.getElement('app_body');
     const themeToggle = DOMUtils.getElement('theme_toggle');
