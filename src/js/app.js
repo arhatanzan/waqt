@@ -58,11 +58,20 @@ function updateEndDateMin() {
 }
 
 // --- UI & SEARCH CONTROLS (TIER 1: API Wrapper) ---
-const searchInput = DOMUtils.getElement('city_search');
-const searchResults = DOMUtils.getElement('search_results');
+let searchInput = null;
+let searchResults = null;
 let searchTimeout;
 
-if(searchInput) {
+// Initialize after DOM is ready
+function initializeSearch() {
+    searchInput = DOMUtils.getElement('city_search');
+    searchResults = DOMUtils.getElement('search_results');
+    
+    if(!searchInput) {
+        console.warn('Search input element not found');
+        return;
+    }
+    
     searchInput.addEventListener("input", async function () {
       clearTimeout(searchTimeout);
       const query = this.value.trim();
@@ -85,9 +94,14 @@ if(searchInput) {
               
               div.onclick = () => {
                 searchInput.value = city.name;
-                DOMUtils.getElement('selected_lat')?.setAttribute('value', city.latitude);
-                DOMUtils.getElement('selected_lng')?.setAttribute('value', city.longitude);
-                DOMUtils.getElement('pending_city_name')?.setAttribute('value', city.name);
+                const latEl = DOMUtils.getElement('selected_lat');
+                const lngEl = DOMUtils.getElement('selected_lng');
+                const cityEl = DOMUtils.getElement('pending_city_name');
+                
+                if (latEl) latEl.value = city.latitude;
+                if (lngEl) lngEl.value = city.longitude;
+                if (cityEl) cityEl.value = city.name;
+                
                 DOMUtils.setVisible('search_results', false);
                 updateLiveClock();
               };
@@ -105,8 +119,15 @@ if(searchInput) {
     });
 
     document.addEventListener("click", (e) => {
-      if (e.target !== searchInput && e.target !== searchResults) DOMUtils.setVisible('search_results', false); 
+      if (e.target !== searchInput && e.target !== searchResults && searchResults) DOMUtils.setVisible('search_results', false); 
     });
+}
+
+// Call initialization after DOM is ready
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initializeSearch);
+} else {
+    initializeSearch();
 }
 
 function openModal() { DOMUtils.setVisible('explanation_modal', true); }
