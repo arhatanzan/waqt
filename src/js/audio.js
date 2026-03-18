@@ -7,22 +7,8 @@ let lastAzaanTriggerTime = "";
 let isDragging = false;
 
 function unlockAudioContext() {
-    if (!audioUnlocked) {
-        const audio = document.getElementById("azaanAudio");
-        if(audio) {
-            audio.play().then(() => {
-                audio.pause();
-                audio.currentTime = 0;
-                audioUnlocked = true;
-            }).catch(() => {
-                // Mark as unlocked even if play fails (browser autoplay policy)
-                audioUnlocked = true;
-            });
-        } else {
-            // Audio element doesn't exist yet, mark as unlocked
-            audioUnlocked = true;
-        }
-    }
+    // This function is kept for backwards compatibility but is no longer needed
+    // Audio will be unlocked on first user interaction (Generate button or Play button)
 }
 
 function togglePlayPause() {
@@ -30,7 +16,15 @@ function togglePlayPause() {
     if(!audio) return;
     
     if(audio.paused) {
-        playAzaan();
+        // Try to play audio via manual action
+        audio.play().then(() => {
+            audioUnlocked = true; // Mark as unlocked on successful play
+            updatePlayButton();
+            document.getElementById("pdf-header").style.boxShadow = "0 0 25px rgba(16, 185, 129, 0.6)";
+            document.getElementById("pdf-header").style.transition = "box-shadow 0.5s ease-in-out";
+        }).catch(() => {
+            alert("Please click 'Generate' or play the audio manually once to enable Auto-Azaan.");
+        });
     } else {
         pauseAzaan();
     }
@@ -40,13 +34,18 @@ function playAzaan() {
     const audio = document.getElementById("azaanAudio");
     if(audio) {
         audio.play().then(() => {
+            audioUnlocked = true; // Mark as unlocked on successful play
             updatePlayButton();
-            document.getElementById("pdf-header").style.boxShadow = "0 0 25px rgba(16, 185, 129, 0.6)";
-            document.getElementById("pdf-header").style.transition = "box-shadow 0.5s ease-in-out";
-        }).catch((error) => {
-            // Silently handle autoplay policy errors
-            // Browser autoplay policies require user interaction, which has already occurred via Generate
-            console.debug("Auto-Azaan play blocked by browser policy:", error);
+            if(document.getElementById("pdf-header")) {
+                document.getElementById("pdf-header").style.boxShadow = "0 0 25px rgba(16, 185, 129, 0.6)";
+                document.getElementById("pdf-header").style.transition = "box-shadow 0.5s ease-in-out";
+            }
+        }).catch(() => {
+            // Auto-Azaan fails silently if:
+            // 1. No user interaction yet (browser autoplay policy)
+            // 2. User hasn't clicked Generate or Play button yet
+            // This will work automatically after first user interaction
+            console.debug("Auto-Azaan awaiting user interaction to play");
         });
     }
 }
@@ -140,9 +139,6 @@ document.addEventListener("DOMContentLoaded", () => {
     const playPauseBtn = document.getElementById("playPauseBtn");
 
     if(azaanAudio && progressContainer && progressBar && timeDisplay) {
-        // Unlock audio context immediately on page load for Auto-Azaan
-        unlockAudioContext();
-        
         // Set initial speed button highlight
         const activeBtn = document.getElementById("speed-1x");
         if(activeBtn) {
