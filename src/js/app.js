@@ -257,8 +257,6 @@ async function generateTimetable() {
   const genBtn = DOMUtils.getElement('generate_btn');
   
   try {
-    unlockAudioContext(); 
-    
     if(genBtn) {
         genBtn.innerText = CONFIG.TEXT.fetching;
         genBtn.disabled = true;

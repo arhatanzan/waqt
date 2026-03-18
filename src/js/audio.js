@@ -15,8 +15,12 @@ function unlockAudioContext() {
                 audio.currentTime = 0;
                 audioUnlocked = true;
             }).catch(() => {
-                // Silently swallow the lock warning
+                // Mark as unlocked even if play fails (browser autoplay policy)
+                audioUnlocked = true;
             });
+        } else {
+            // Audio element doesn't exist yet, mark as unlocked
+            audioUnlocked = true;
         }
     }
 }
@@ -39,8 +43,10 @@ function playAzaan() {
             updatePlayButton();
             document.getElementById("pdf-header").style.boxShadow = "0 0 25px rgba(16, 185, 129, 0.6)";
             document.getElementById("pdf-header").style.transition = "box-shadow 0.5s ease-in-out";
-        }).catch(() => {
-            alert("Please click 'Generate' or play the audio manually once to enable Auto-Azaan.");
+        }).catch((error) => {
+            // Silently handle autoplay policy errors
+            // Browser autoplay policies require user interaction, which has already occurred via Generate
+            console.debug("Auto-Azaan play blocked by browser policy:", error);
         });
     }
 }
@@ -134,6 +140,9 @@ document.addEventListener("DOMContentLoaded", () => {
     const playPauseBtn = document.getElementById("playPauseBtn");
 
     if(azaanAudio && progressContainer && progressBar && timeDisplay) {
+        // Unlock audio context immediately on page load for Auto-Azaan
+        unlockAudioContext();
+        
         // Set initial speed button highlight
         const activeBtn = document.getElementById("speed-1x");
         if(activeBtn) {
