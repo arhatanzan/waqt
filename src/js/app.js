@@ -43,73 +43,83 @@ function initializeTheme() {
 
 // --- DATE VALIDATION ---
 function updateEndDateMin() {
-    const startDate = document.getElementById('startDate').value;
-    const endDate = document.getElementById('endDate');
+    const startDateEl = DOMUtils.getElement('start_date');
+    const endDateEl = DOMUtils.getElement('end_date');
+    const startDate = startDateEl?.value;
     
-    if (startDate) {
-        endDate.min = startDate;
+    if (startDate && endDateEl) {
+        DOMUtils.setAttributes('end_date', { min: startDate });
         
         // Check if current endDate is before startDate
-        if (endDate.value && endDate.value < startDate) {
-            endDate.value = startDate;
+        if (endDateEl.value && endDateEl.value < startDate) {
+            DOMUtils.setAttributes('end_date', { value: startDate });
         }
     }
 }
 
-// --- UI & SEARCH CONTROLS ---
-const searchInput = document.getElementById("citySearch");
-const searchResults = document.getElementById("searchResults");
+// --- UI & SEARCH CONTROLS (TIER 1: API Wrapper) ---
+const searchInput = DOMUtils.getElement('city_search');
+const searchResults = DOMUtils.getElement('search_results');
 let searchTimeout;
 
 if(searchInput) {
-    searchInput.addEventListener("input", function () {
+    searchInput.addEventListener("input", async function () {
       clearTimeout(searchTimeout);
       const query = this.value.trim();
-      if (query.length < 2) { searchResults.style.display = "none"; return; }
+      if (query.length < 2) { 
+        DOMUtils.setVisible('search_results', false); 
+        return; 
+      }
 
-      searchTimeout = setTimeout(() => {
-        fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${query}&count=5&language=en&format=json`)
-          .then((res) => res.json())
-          .then((data) => {
-            searchResults.innerHTML = "";
-            if (data.results && data.results.length > 0) {
-              data.results.forEach((city) => {
-                const div = document.createElement("div");
-                div.className = "p-3 hover:bg-emerald-50 cursor-pointer border-b border-slate-100 text-sm";
-                div.innerHTML = `<strong>${city.name}</strong>, ${city.admin1 ? city.admin1 + ", " : ""}${city.country}`;
-                
-                div.onclick = () => {
-                  searchInput.value = city.name;
-                  document.getElementById("selectedLat").value = city.latitude;
-                  document.getElementById("selectedLng").value = city.longitude;
-                  document.getElementById("pendingCityName").value = city.name;
-                  searchResults.style.display = "none";
-                  updateLiveClock();
-                };
-                searchResults.appendChild(div);
-              });
-              searchResults.style.display = "block";
-            } else { searchResults.style.display = "none"; }
-          });
+      searchTimeout = setTimeout(async () => {
+        try {
+          // TIER 1: Use API wrapper instead of raw fetch
+          const results = await searchGeolocation(query, 5);
+          
+          DOMUtils.setHTML('search_results', '');
+          if (results && results.length > 0) {
+            results.forEach((city) => {
+              const div = document.createElement("div");
+              div.className = "p-3 hover:bg-emerald-50 cursor-pointer border-b border-slate-100 text-sm";
+              div.innerHTML = `<strong>${city.name}</strong>, ${city.admin1 ? city.admin1 + ", " : ""}${city.country}`;
+              
+              div.onclick = () => {
+                searchInput.value = city.name;
+                DOMUtils.getElement('selected_lat')?.setAttribute('value', city.latitude);
+                DOMUtils.getElement('selected_lng')?.setAttribute('value', city.longitude);
+                DOMUtils.getElement('pending_city_name')?.setAttribute('value', city.name);
+                DOMUtils.setVisible('search_results', false);
+                updateLiveClock();
+              };
+              searchResults.appendChild(div);
+            });
+            DOMUtils.setVisible('search_results', true);
+          } else { 
+            DOMUtils.setVisible('search_results', false); 
+          }
+        } catch (error) {
+          console.error('Search error:', error);
+          DOMUtils.setVisible('search_results', false);
+        }
       }, 300);
     });
 
     document.addEventListener("click", (e) => {
-      if (e.target !== searchInput && e.target !== searchResults) searchResults.style.display = "none"; 
+      if (e.target !== searchInput && e.target !== searchResults) DOMUtils.setVisible('search_results', false); 
     });
 }
 
-function openModal() { document.getElementById('explanationModal').style.display = 'flex'; }
-function closeModal() { document.getElementById('explanationModal').style.display = 'none'; }
+function openModal() { DOMUtils.setVisible('explanation_modal', true); }
+function closeModal() { DOMUtils.setVisible('explanation_modal', false); }
 
 function toggleView() {
     const viewFormat = document.querySelector('input[name="viewFormat"]:checked').value;
     if (viewFormat === 'calendar') {
-        document.getElementById('table-container').classList.add('hidden');
-        document.getElementById('calendar-container').classList.remove('hidden');
+        DOMUtils.addClass('table_container', 'hidden');
+        DOMUtils.removeClass('calendar_container', 'hidden');
     } else {
-        document.getElementById('table-container').classList.remove('hidden');
-        document.getElementById('calendar-container').classList.add('hidden');
+        DOMUtils.removeClass('table_container', 'hidden');
+        DOMUtils.addClass('calendar_container', 'hidden');
     }
 }
 
@@ -145,19 +155,19 @@ function applyDisplaySettings() {
     const showTareeq = document.getElementById("showTareeq").checked;
     
     // Check if we have data to apply settings to
-    const tableBody = document.getElementById("tableBody");
+    const tableBody = DOMUtils.getElement('table_body');
     if (!tableBody || tableBody.children.length === 0) {
-        alert("Please generate the timetable first using the Generate button.");
+        alert(CONFIG.TEXT.error_generate_first);
         return;
     }
     
     // First, switch view
     if (viewFormat === 'calendar') {
-        document.getElementById('table-container').classList.add('hidden');
-        document.getElementById('calendar-container').classList.remove('hidden');
+        DOMUtils.addClass('table_container', 'hidden');
+        DOMUtils.removeClass('calendar_container', 'hidden');
     } else {
-        document.getElementById('table-container').classList.remove('hidden');
-        document.getElementById('calendar-container').classList.add('hidden');
+        DOMUtils.removeClass('table_container', 'hidden');
+        DOMUtils.addClass('calendar_container', 'hidden');
     }
     
     // For table view, update column visibility and time format
@@ -208,12 +218,16 @@ window.onload = async function () {
     
     const today = new Date();
     const thirtyDaysLater = new Date();
-    thirtyDaysLater.setDate(today.getDate() + 29);
+    thirtyDaysLater.setDate(today.getDate() + CONFIG.DATE.default_days_ahead);
     
-    if(document.getElementById("startDate")) {
-        document.getElementById("startDate").value = formatHtmlDate(today);
-        document.getElementById("endDate").value = formatHtmlDate(thirtyDaysLater);
-        document.getElementById("citySearch").value = "Lucknow";
+    const startDateEl = DOMUtils.getElement('start_date');
+    const endDateEl = DOMUtils.getElement('end_date');
+    const citySearchEl = DOMUtils.getElement('city_search');
+    
+    if(startDateEl && endDateEl && citySearchEl) {
+        DOMUtils.setAttributes('start_date', { value: formatHtmlDate(today) });
+        DOMUtils.setAttributes('end_date', { value: formatHtmlDate(thirtyDaysLater) });
+        citySearchEl.value = CONFIG.DATE.default_city;
         
         updateEndDateMin();
         await updateLiveDates(); 
@@ -222,23 +236,25 @@ window.onload = async function () {
     }
 };
 
-// --- CORE GENERATION ENGINE ---
+// --- CORE GENERATION ENGINE (TIER 2: Error Handling) ---
 async function generateTimetable() {
-  unlockAudioContext(); 
+  const genBtn = DOMUtils.getElement('generate_btn');
   
-  const genBtn = document.getElementById("generateBtn");
-  if(genBtn) {
-      genBtn.innerText = "Fetching APIs...";
-      genBtn.disabled = true;
-      genBtn.classList.add("opacity-50", "cursor-wait");
-  }
-  
-  const lat = parseFloat(document.getElementById("selectedLat").value);
-  const lng = parseFloat(document.getElementById("selectedLng").value);
-  const cityName = document.getElementById("pendingCityName").value;
-  
-  let start = new Date(document.getElementById("startDate").value);
-  let end = new Date(document.getElementById("endDate").value);
+  try {
+    unlockAudioContext(); 
+    
+    if(genBtn) {
+        genBtn.innerText = CONFIG.TEXT.fetching;
+        genBtn.disabled = true;
+        genBtn.classList.add("opacity-50", "cursor-wait");
+    }
+    
+    const lat = parseFloat(DOMUtils.getElement('selected_lat')?.value || 0);
+    const lng = parseFloat(DOMUtils.getElement('selected_lng')?.value || 0);
+    const cityName = DOMUtils.getElement('pending_city_name')?.value || '';
+    
+    let start = new Date(DOMUtils.getElement('start_date')?.value);
+    let end = new Date(DOMUtils.getElement('end_date')?.value);
   
   // DATE VALIDATION: Check if endDate is not less than startDate
   if (end < start) {
@@ -292,12 +308,9 @@ async function generateTimetable() {
   }
 
   while (currentDate <= end) {
-    const times = SunCalc.getTimes(currentDate, lat, lng);
-    const saher = new Date(times.saherExact.getTime() - 10 * 60000);
-    const subah = times.nightEnd;
-    const tulu = new Date(times.sunrise.getTime() + 1 * 60000);
-    const zohar = new Date(times.solarNoon.getTime() - 1 * 60000);
-    const maghrib = new Date(times.maghribEnd.getTime() - 5 * 60000);
+    // TIER 2: Use extracted time calculation function
+    const times = calculatePrayerTimes(currentDate, lat, lng);
+    const timeAttrs = createTimeDataAttributes(times);
 
     const dateInfo = formatDate(currentDate);
     const hijriInfo = getHijriFromCache(currentDate, lng);
@@ -324,13 +337,13 @@ async function generateTimetable() {
     // Always include all columns - applyDisplaySettings will show/hide them
     rowHTML += `<td class="p-2 border-r border-slate-200 text-left align-top pt-3" data-column="events">${eventsHTML}</td>`;
     rowHTML += `<td class="p-2 border-r border-slate-200 text-center align-top pt-3" data-column="tareeq">${getTareeqInfo(hijriInfo.dayNum, hijriInfo.monthNum)}</td>`;
-    rowHTML += `<td class="p-2 bg-emerald-50/30 align-middle" data-column="saher" data-time="${saher.getHours()}:${String(saher.getMinutes()).padStart(2, '0')}">${formatTime(saher, is24Hour)}</td>`;
+    rowHTML += `<td class="p-2 bg-emerald-50/30 align-middle" data-column="saher" data-time="${timeAttrs.saher}">${formatTime(times.saher, is24Hour)}</td>`;
 
     rowHTML += `
-            <td class="p-2 align-middle" data-time="${subah.getHours()}:${String(subah.getMinutes()).padStart(2, '0')}">${formatTime(subah, is24Hour)}</td>
-            <td class="p-2 bg-amber-50/30 align-middle" data-time="${tulu.getHours()}:${String(tulu.getMinutes()).padStart(2, '0')}">${formatTime(tulu, is24Hour)}</td>
-            <td class="p-2 align-middle" data-time="${zohar.getHours()}:${String(zohar.getMinutes()).padStart(2, '0')}">${formatTime(zohar, is24Hour)}</td>
-            <td class="p-2 bg-indigo-50/30 align-middle border-r-0" data-time="${maghrib.getHours()}:${String(maghrib.getMinutes()).padStart(2, '0')}">${formatTime(maghrib, is24Hour)}</td>
+            <td class="p-2 align-middle" data-time="${timeAttrs.subah}">${formatTime(times.subah, is24Hour)}</td>
+            <td class="p-2 bg-amber-50/30 align-middle" data-time="${timeAttrs.tulu}">${formatTime(times.tulu, is24Hour)}</td>
+            <td class="p-2 align-middle" data-time="${timeAttrs.zohar}">${formatTime(times.zohar, is24Hour)}</td>
+            <td class="p-2 bg-indigo-50/30 align-middle border-r-0" data-time="${timeAttrs.maghrib}">${formatTime(times.maghrib, is24Hour)}</td>
         </tr>
     `;
     tableBody.insertAdjacentHTML("beforeend", rowHTML);
@@ -350,11 +363,11 @@ async function generateTimetable() {
                 <span class="text-[9px] font-bold bg-emerald-100 text-emerald-800 px-1.5 py-0.5 rounded">${hijriInfo.string}</span>
             </div>
             <div class="space-y-1">
-                ${showSaher ? `<div class="flex justify-between text-[10px] bg-emerald-50 px-1 rounded"><span class="text-slate-500">Saher</span><span>${formatTime(saher, is24Hour)}</span></div>` : ''}
-                <div class="flex justify-between text-[10px] px-1"><span class="text-slate-500">Subah</span><span>${formatTime(subah, is24Hour)}</span></div>
-                <div class="flex justify-between text-[10px] bg-amber-50 px-1 rounded"><span class="text-slate-500">Tulu</span><span>${formatTime(tulu, is24Hour)}</span></div>
-                <div class="flex justify-between text-[10px] px-1"><span class="text-slate-500">Zohar</span><span>${formatTime(zohar, is24Hour)}</span></div>
-                <div class="flex justify-between text-[10px] bg-indigo-50 px-1 rounded"><span class="text-slate-500">Maghrib</span><span>${formatTime(maghrib, is24Hour)}</span></div>
+                ${showSaher ? `<div class="flex justify-between text-[10px] bg-emerald-50 px-1 rounded"><span class="text-slate-500">Saher</span><span>${formatTime(times.saher, is24Hour)}</span></div>` : ''}
+                <div class="flex justify-between text-[10px] px-1"><span class="text-slate-500">Subah</span><span>${formatTime(times.subah, is24Hour)}</span></div>
+                <div class="flex justify-between text-[10px] bg-amber-50 px-1 rounded"><span class="text-slate-500">Tulu</span><span>${formatTime(times.tulu, is24Hour)}</span></div>
+                <div class="flex justify-between text-[10px] px-1"><span class="text-slate-500">Zohar</span><span>${formatTime(times.zohar, is24Hour)}</span></div>
+                <div class="flex justify-between text-[10px] bg-indigo-50 px-1 rounded"><span class="text-slate-500">Maghrib</span><span>${formatTime(times.maghrib, is24Hour)}</span></div>
             </div>
             ${calExtraInfoHTML}
         </div>
@@ -365,10 +378,17 @@ async function generateTimetable() {
     rowCount++;
   }
   
-  if(genBtn) {
-      genBtn.innerText = "Generate";
-      genBtn.disabled = false;
-      genBtn.classList.remove("opacity-50", "cursor-wait");
+  } catch (error) {
+    // TIER 2: Error handling - ensure UI state is reset
+    console.error('Timetable generation error:', error);
+    alert('Error generating timetable: ' + error.message);
+  } finally {
+    // Ensure button state is reset regardless of success or failure
+    if(genBtn) {
+        genBtn.innerText = CONFIG.TEXT.generate;
+        genBtn.disabled = false;
+        genBtn.classList.remove("opacity-50", "cursor-wait");
+    }
   }
 }
 
