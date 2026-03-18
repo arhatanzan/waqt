@@ -76,7 +76,7 @@ function initializeSearch() {
       clearTimeout(searchTimeout);
       const query = this.value.trim();
       if (query.length < 2) { 
-        DOMUtils.setVisible('search_results', false); 
+        searchResults.style.display = 'none'; 
         return; 
       }
 
@@ -84,8 +84,9 @@ function initializeSearch() {
         try {
           // TIER 1: Use API wrapper instead of raw fetch
           const results = await searchGeolocation(query, 5);
+          console.log('Search results:', results);
           
-          DOMUtils.setHTML('search_results', '');
+          searchResults.innerHTML = '';
           if (results && results.length > 0) {
             results.forEach((city) => {
               const div = document.createElement("div");
@@ -102,32 +103,25 @@ function initializeSearch() {
                 if (lngEl) lngEl.value = city.longitude;
                 if (cityEl) cityEl.value = city.name;
                 
-                DOMUtils.setVisible('search_results', false);
+                searchResults.style.display = 'none';
                 updateLiveClock();
               };
               searchResults.appendChild(div);
             });
-            DOMUtils.setVisible('search_results', true);
+            searchResults.style.display = 'block';
           } else { 
-            DOMUtils.setVisible('search_results', false); 
+            searchResults.style.display = 'none'; 
           }
         } catch (error) {
           console.error('Search error:', error);
-          DOMUtils.setVisible('search_results', false);
+          searchResults.style.display = 'none';
         }
       }, 300);
     });
 
     document.addEventListener("click", (e) => {
-      if (e.target !== searchInput && e.target !== searchResults && searchResults) DOMUtils.setVisible('search_results', false); 
+      if (e.target !== searchInput && e.target !== searchResults && searchResults) searchResults.style.display = 'none'; 
     });
-}
-
-// Call initialization after DOM is ready
-if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', initializeSearch);
-} else {
-    initializeSearch();
 }
 
 function openModal() { DOMUtils.setVisible('explanation_modal', true); }
@@ -236,6 +230,7 @@ function updateTableDisplay(showSaher, showEvents, showTareeq, is24Hour) {
 
 window.onload = async function () {
     initializeTheme();
+    initializeSearch();
     
     const today = new Date();
     const thirtyDaysLater = new Date();
