@@ -134,7 +134,7 @@ export default function PrayerDashboard() {
         </article>;
       })}</div>
       {times.some((prayer) => Number.isNaN(prayer.time.getTime())) && <p className="notice" role="alert">Some solar events do not occur at this latitude today. Ask your local authority for high-latitude guidance; no estimated times are substituted.</p>}
-      <div className="schedule-note"><Compass size={14} /><span>Original Shia method preserved: Fajr −18°, Saher −19° with a 10-minute precaution; Maghrib −4.5° with a 5-minute precaution. Asr and Isha may be combined; consult your marja.</span><a href="/timetable/" target="_blank" rel="noopener noreferrer"><ArrowDownToLine size={14} /> Full timetable</a></div>
+      <div className="schedule-note"><Compass size={14} /><span>Fajr uses −18°, Saher uses −19° with a 10-minute precaution, and Maghrib is calculated from sunset. Adjustments can be customized above. Asr and Isha may be combined; consult your marja.</span><a href="/timetable/" target="_blank" rel="noopener noreferrer"><ArrowDownToLine size={14} /> Full timetable</a></div>
     </section>
     <section className="reflection-grid">
       <article className="daily-reflection"><span className="eyebrow"><span className="little-line" /> A VERSE TO CARRY WITH YOU</span><p className="arabic" lang="ar" dir="rtl">فَإِنَّ مَعَ الْعُسْرِ يُسْرًا</p><blockquote>“For indeed, with hardship comes ease.”</blockquote><div className="between"><span className="muted small">Ash-Sharh · 94:5</span><Link className="text-button" href="/quran?ayah=94:5">Open the Quran <ArrowRight size={16} /></Link></div></article>

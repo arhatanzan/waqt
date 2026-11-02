@@ -3,12 +3,10 @@ import SunCalc from "suncalc";
 declare module "suncalc" {
   interface GetTimesResult {
     saherExact: Date;
-    maghribEnd: Date;
   }
 }
 
 SunCalc.addTime(-19, "saherExact", "saherEnd");
-SunCalc.addTime(-4.5, "maghribExact", "maghribEnd");
 
 export type Place = { name: string; latitude: number; longitude: number; timezone: string };
 export type Prayer = { name: string; arabic: string; time: Date; prayer: boolean };
@@ -25,7 +23,7 @@ export const defaultAdjustments: PrayerAdjustments = {
   fajr: 0,
   sunrise: 1,
   dhuhr: -1,
-  maghrib: -5,
+  maghrib: 0,
 };
 
 export function dateAtLocation(now: Date, timezone: string, offset = 0) {
@@ -51,7 +49,7 @@ export function prayerTimes(day: Date, place: Place, adjustments: PrayerAdjustme
     { name: "Fajr", arabic: "الفجر", time: shift(times.nightEnd, adjustments.fajr), prayer: true },
     { name: "Sunrise", arabic: "الشروق", time: shift(times.sunrise, adjustments.sunrise), prayer: false },
     { name: "Dhuhr", arabic: "الظهر", time: shift(times.solarNoon, adjustments.dhuhr), prayer: true },
-    { name: "Maghrib", arabic: "المغرب", time: shift(times.maghribEnd, adjustments.maghrib), prayer: true },
+    { name: "Maghrib", arabic: "المغرب", time: shift(times.sunset, adjustments.maghrib), prayer: true },
   ];
 }
 export function nextPrayer(now: Date, place: Place, adjustments: PrayerAdjustments = defaultAdjustments) {

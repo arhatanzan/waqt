@@ -2,8 +2,8 @@ import { describe, expect, it } from "vitest";
 import SunCalc from "suncalc";
 import { countdown, dateAtLocation, defaultPlace, defaultAdjustments, nextPrayer, prayerTimes } from "./prayer";
 
-describe("original prayer calculation", () => {
-  it("preserves every existing solar angle and safety buffer", () => {
+describe("prayer calculation", () => {
+  it("preserves solar angles and offsets, using sunset as the Maghrib base", () => {
     const day = dateAtLocation(new Date("2026-11-02T08:00:00Z"), defaultPlace.timezone);
     const original = SunCalc.getTimes(day, defaultPlace.latitude, defaultPlace.longitude);
     const times = prayerTimes(day, defaultPlace, defaultAdjustments);
@@ -12,8 +12,19 @@ describe("original prayer calculation", () => {
       original.nightEnd.getTime() + defaultAdjustments.fajr * 60000,
       original.sunrise.getTime() + defaultAdjustments.sunrise * 60000,
       original.solarNoon.getTime() + defaultAdjustments.dhuhr * 60000,
-      original.maghribEnd.getTime() + defaultAdjustments.maghrib * 60000,
+      original.sunset.getTime() + defaultAdjustments.maghrib * 60000,
     ]);
+  });
+  it("shows Maghrib at 5:36 PM for Noida on November 2, 2026", () => {
+    const place = { name: "Noida, India", latitude: 28.58, longitude: 77.33, timezone: "Asia/Kolkata" };
+    const day = dateAtLocation(new Date("2026-11-02T08:00:00Z"), place.timezone);
+    const maghrib = prayerTimes(day, place)[4];
+    expect(new Intl.DateTimeFormat("en-GB", {
+      timeZone: place.timezone,
+      hour: "2-digit",
+      minute: "2-digit",
+      hourCycle: "h23",
+    }).format(maghrib.time)).toBe("17:36");
   });
   it("rolls the countdown over to tomorrow's Fajr, excluding sunrise and Saher", () => {
     const now = new Date("2026-11-02T18:00:00Z");
