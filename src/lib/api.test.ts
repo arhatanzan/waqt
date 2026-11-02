@@ -11,6 +11,9 @@ describe("UmmahAPI response adapters", () => {
   function respond(data: unknown, status = 200) {
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response(JSON.stringify(status === 200 ? { success: true, data } : data), { status })));
   }
+  function respondThaqalayn(data: unknown, status = 200) {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response(JSON.stringify(data), { status })));
+  }
   it("reads the surah index and rejects unexpected shapes", async () => {
     respond({ surahs: [] }); expect(await getSurahs()).toEqual({ surahs: [] });
     respond({ chapters: [] }); await expect(getSurahs()).rejects.toThrow();
@@ -26,12 +29,30 @@ describe("UmmahAPI response adapters", () => {
     ] });
     expect(await getAyahAudio("1:1")).toBe("https://everyayah.com/001001.mp3");
   });
-  it("reads referenced duas and categories", async () => {
-    respond({ duas: [], categories: [] }); expect(await getDuas()).toEqual({ duas: [], categories: [] });
+  it("reads referenced duas and categories from ThaqalaynAPI", async () => {
+    respondThaqalayn([]); 
+    const result = await getDuas();
+    expect(result).toEqual({ duas: [], categories: [] });
   });
-  it("accepts a source-backed dua with no additional reference", async () => {
-    respond({ duas: [{ id: 13, category: "wudu", title: "Test", arabic: "Test", transliteration: "Test", translation: "Test", source: "Source collection", reference: null }], categories: [] });
-    expect((await getDuas()).duas[0].reference).toBeNull();
+  it("transforms ThaqalaynAPI books to dua format", async () => {
+    respondThaqalayn([{
+      bookId: "test-book",
+      BookName: "Test Book",
+      author: "Test Author",
+      idRangeMin: 1,
+      idRangeMax: 10,
+      bookDescription: "A test description"
+    }]);
+    const result = await getDuas();
+    expect(result.duas).toHaveLength(1);
+    expect(result.duas[0]).toMatchObject({
+      id: 0,
+      category: "test-book",
+      title: "Test Book - Test Author",
+      source: "ThaqalaynAPI",
+      reference: null,
+      authenticity_note: null,
+    });
   });
   it("surfaces API failures rather than returning empty content", async () => {
     respond({ error: "Upstream unavailable" }, 502);

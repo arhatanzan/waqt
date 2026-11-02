@@ -35,88 +35,57 @@ export const getSurahs = (signal?: AbortSignal) =>
 export const getReading = (kind: "surah" | "juz", number: number, signal?: AbortSignal) =>
   api(`quran/${kind}/${number}`, z.object({ verses: z.array(verseSchema) }), signal);
 
-// Try ThaqalaynAPI first for duas, fall back to UmmahAPI
+// Use ThaqalaynAPI for duas
 export const getDuas = async (signal?: AbortSignal) => {
   try {
-    // First, try to detect which API we're connected to
-    // Make a request to UmmahAPI duas endpoint (the default)
-    // If it fails, try ThaqalaynAPI
+    const response = await fetch(`/api/thaqalayn/v2/allbooks`, { signal });
     
-    const response = await fetch(`/api/ummah/duas`, { signal });
     if (!response.ok) {
-      throw new Error("UmmahAPI request failed");
+      throw new Error("ThaqalaynAPI request failed");
     }
     
     const body = await response.json();
     
-    // Check if this looks like UmmahAPI response
-    const ummahResponseSchema = z.object({
-      success: z.literal(true),
-      data: z.object({
-        duas: z.array(duaSchema),
-        categories: z.array(z.object({ id: z.string(), name: z.string() })),
-      }),
-    });
+    // Check if this looks like ThaqalaynAPI response (array of books)
+    const booksSchema = z.array(z.object({
+      bookId: z.string(),
+      BookName: z.string(),
+      author: z.string(),
+      idRangeMin: z.number(),
+      idRangeMax: z.number(),
+      bookDescription: z.string().optional(),
+    }));
     
-    const parsed = ummahResponseSchema.safeParse(body);
+    const parsed = booksSchema.safeParse(body);
     
-    if (parsed.success) {
-      return parsed.data.data;
+    if (!parsed.success) {
+      console.error("Unexpected ThaqalaynAPI response", "v2/allbooks", parsed.error);
+      throw new Error("The data provider returned an unexpected response. Please retry shortly.");
     }
     
-    // If it doesn't look like UmmahAPI, try ThaqalaynAPI
-    throw new Error("Response format not recognized as UmmahAPI");
+    // Transform ThaqalaynAPI books to dua format
+    const booksResponse = parsed.data;
+    const duas = booksResponse.map((book, index) => ({
+      id: index,
+      category: book.bookId,
+      title: `${book.BookName} - ${book.author}`,
+      arabic: book.bookDescription || "",
+      transliteration: book.BookName,
+      translation: book.author,
+      source: "ThaqalaynAPI",
+      reference: null,
+      authenticity_note: null,
+    }));
+    
+    const categories = booksResponse.map(book => ({
+      id: book.bookId,
+      name: book.BookName,
+    }));
+    
+    return { duas, categories };
   } catch (error) {
-    try {
-      // Fall back to ThaqalaynAPI
-      const response = await fetch(`/api/thaqalayn/v2/allbooks`, { signal });
-      
-      if (!response.ok) {
-        throw new Error("ThaqalaynAPI request failed");
-      }
-      
-      const body = await response.json();
-      
-      // Check if this looks like ThaqalaynAPI response (array of books)
-      const booksSchema = z.array(z.object({
-        bookId: z.string(),
-        BookName: z.string(),
-        author: z.string(),
-        idRangeMin: z.number(),
-        idRangeMax: z.number(),
-        bookDescription: z.string().optional(),
-      }));
-      
-      const parsed = booksSchema.safeParse(body);
-      
-      if (parsed.success) {
-        // Transform ThaqalaynAPI books to dua format
-        const booksResponse = parsed.data;
-        const duas = booksResponse.map((book, index) => ({
-          id: index,
-          category: book.bookId,
-          title: `${book.BookName} - ${book.author}`,
-          arabic: book.bookDescription || "",
-          transliteration: book.BookName,
-          translation: book.author,
-          source: "ThaqalaynAPI",
-          reference: null,
-          authenticity_note: null,
-        }));
-        
-        const categories = booksResponse.map(book => ({
-          id: book.bookId,
-          name: book.BookName,
-        }));
-        
-        return { duas, categories };
-      }
-      
-      throw new Error("Response format not recognized as ThaqalaynAPI");
-    } catch (fallbackError) {
-      console.error("Both API sources failed for duas", error, fallbackError);
-      throw new Error("Could not load duas from any available source. Please try again.");
-    }
+    console.error("Failed to load duas from ThaqalaynAPI", error);
+    throw error instanceof Error ? error : new Error("Could not load duas. Please try again.");
   }
 };
 
