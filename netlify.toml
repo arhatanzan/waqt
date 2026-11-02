@@ -2,15 +2,8 @@
 
 # Set the directory to publish (deploy)
 [build]
-  publish = "src"
-  command = "echo 'No build command needed - static site'"
-
-# Redirect rules for single-page application routing
-[[redirects]]
-  from = "/*"
-  to = "/index.html"
-  status = 200
-  force = false
+  publish = ".next"
+  command = "npm run build"
 
 # Headers for production deployment
 [[headers]]
@@ -20,19 +13,3 @@
     X-Content-Type-Options = "nosniff"
     X-XSS-Protection = "1; mode=block"
     Referrer-Policy = "strict-origin-when-cross-origin"
-
-# Cache headers for assets
-[[headers]]
-  for = "/js/*"
-  [headers.values]
-    Cache-Control = "public, max-age=31536000, immutable"
-
-[[headers]]
-  for = "/css/*"
-  [headers.values]
-    Cache-Control = "public, max-age=31536000, immutable"
-
-[[headers]]
-  for = "/data/*"
-  [headers.values]
-    Cache-Control = "public, max-age=86400"
