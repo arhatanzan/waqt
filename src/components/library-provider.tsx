@@ -9,7 +9,7 @@ type LibraryContext = {
   ready: boolean;
   error: string;
   toggleAyat: (key: string) => void;
-  toggleDua: (id: number) => void;
+  toggleHadith: (bookId: string, id: number) => void;
   saveNote: (key: string, text: string) => boolean;
   importLibrary: (text: string) => boolean;
 };
@@ -57,8 +57,13 @@ export function LibraryProvider({ children }: { children: React.ReactNode }) {
   const toggleAyat = (key: string) => {
     commit((value) => ({ ...value, ayats: value.ayats.includes(key) ? value.ayats.filter((k) => k !== key) : [...value.ayats, key] }));
   };
-  const toggleDua = (id: number) => {
-    commit((value) => ({ ...value, duas: value.duas.includes(id) ? value.duas.filter((k) => k !== id) : [...value.duas, id] }));
+  const toggleHadith = (bookId: string, id: number) => {
+    commit((value) => ({
+      ...value,
+      hadiths: value.hadiths.some((item) => item.bookId === bookId && item.id === id)
+        ? value.hadiths.filter((item) => item.bookId !== bookId || item.id !== id)
+        : [...value.hadiths, { bookId, id }],
+    }));
   };
   const saveNote = (key: string, text: string) => commit((value) => {
     const notes = { ...value.notes };
@@ -79,7 +84,7 @@ export function LibraryProvider({ children }: { children: React.ReactNode }) {
       return false;
     }
   };
-  return <Context.Provider value={{ library, ready, error, toggleAyat, toggleDua, saveNote, importLibrary }}>
+  return <Context.Provider value={{ library, ready, error, toggleAyat, toggleHadith, saveNote, importLibrary }}>
     {error && <div role="alert" className="storage-error">{error}</div>}
     {children}
   </Context.Provider>;

@@ -1,17 +1,19 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import Link from "next/link";
 import { ArrowDownToLine, ArrowRight, BookOpen, Check, ChevronRight, Compass, Heart, LocateFixed, MapPin, Moon, Search, Sunrise, Sun, Sunset } from "lucide-react";
 import { z } from "zod";
-import { countdown, dateAtLocation, defaultPlace, nextPrayer, prayerTimes, type Place } from "@/lib/prayer";
+import { countdown, dateAtLocation, defaultPlace, defaultAdjustments, nextPrayer, prayerTimes, type Place, type PrayerAdjustments } from "@/lib/prayer";
 
 const placeSchema = z.object({ name: z.string(), latitude: z.number().min(-90).max(90), longitude: z.number().min(-180).max(180), timezone: z.string().refine((value) => {
   try { new Intl.DateTimeFormat("en", { timeZone: value }); return true; } catch { return false; }
 }) });
 type City = Place & { country?: string; admin1?: string };
 const prayerIcons = [Moon, Sunrise, Sun, Sun, Sunset];
-export default function PrayerDashboard({ navigate }: { navigate: (tab: "quran" | "dua" | "saved") => void }) {
+export default function PrayerDashboard() {
   const [place, setPlace] = useState<Place>(defaultPlace);
+  const [adjustments, setAdjustments] = useState<PrayerAdjustments>(defaultAdjustments);
   const [now, setNow] = useState<Date | null>(null);
   const [query, setQuery] = useState("");
   const [cities, setCities] = useState<City[]>([]);
@@ -20,13 +22,16 @@ export default function PrayerDashboard({ navigate }: { navigate: (tab: "quran" 
   const [searchError, setSearchError] = useState("");
   const [locating, setLocating] = useState(false);
   const [use24Hour, setUse24Hour] = useState(false);
+  const [showAdjustments, setShowAdjustments] = useState(false);
   useEffect(() => {
     setNow(new Date());
     const timer = setInterval(() => setNow(new Date()), 1000);
     try {
       const saved = localStorage.getItem("waqt.location");
       if (saved) setPlace(placeSchema.parse(JSON.parse(saved)));
-    } catch { setError("Your saved location could not be loaded. Showing Lucknow; select your city to continue."); }
+      const savedAdj = localStorage.getItem("waqt.adjustments");
+      if (savedAdj) setAdjustments(JSON.parse(savedAdj));
+    } catch { setError("Your saved location or adjustments could not be loaded. Using defaults."); }
     return () => clearInterval(timer);
   }, []);
   useEffect(() => {
@@ -55,6 +60,17 @@ export default function PrayerDashboard({ navigate }: { navigate: (tab: "quran" 
     try { localStorage.setItem("waqt.location", JSON.stringify(value)); }
     catch { setError("Location changed, but this browser could not save it for your next visit."); }
   }
+  function updateAdjustment(key: keyof PrayerAdjustments, value: number) {
+    const newAdj = { ...adjustments, [key]: value };
+    setAdjustments(newAdj);
+    try { localStorage.setItem("waqt.adjustments", JSON.stringify(newAdj)); }
+    catch { setError("Adjustments changed, but this browser could not save them for your next visit."); }
+  }
+  function resetAdjustments() {
+    setAdjustments(defaultAdjustments);
+    try { localStorage.setItem("waqt.adjustments", JSON.stringify(defaultAdjustments)); }
+    catch { setError("Adjustments reset, but this browser could not save them for your next visit."); }
+  }
   function locate() {
     if (!navigator.geolocation) { setError("Geolocation is not supported. Search for your city instead."); return; }
     setLocating(true);
@@ -69,8 +85,8 @@ export default function PrayerDashboard({ navigate }: { navigate: (tab: "quran" 
     }, (error) => { setError(`Location unavailable: ${error.message}. Search for your city instead.`); setLocating(false); }, { timeout: 15000 });
   }
   const day = now ? dateAtLocation(now, place.timezone).getTime() : null;
-  const times = useMemo(() => day === null ? [] : prayerTimes(new Date(day), place), [day, place]);
-  const next = now ? nextPrayer(now, place) : undefined;
+  const times = useMemo(() => day === null ? [] : prayerTimes(new Date(day), place, adjustments), [day, place, adjustments]);
+  const next = now ? nextPrayer(now, place, adjustments) : undefined;
   const formatTime = (time: Date) => Number.isNaN(time.getTime()) ? "Unavailable" : new Intl.DateTimeFormat("en", { timeZone: place.timezone, hour: "2-digit", minute: "2-digit", hour12: !use24Hour }).format(time);
   const hijri = now ? new Intl.DateTimeFormat("en-u-ca-islamic", { timeZone: place.timezone, day: "numeric", month: "long", year: "numeric" }).format(now) : "Loading date…";
   const gregorian = now ? new Intl.DateTimeFormat("en", { timeZone: place.timezone, weekday: "long", month: "long", day: "numeric", year: "numeric" }).format(now) : "";
@@ -93,7 +109,22 @@ export default function PrayerDashboard({ navigate }: { navigate: (tab: "quran" 
       </div>
       <div className="hero-verse"><span className="arabic" lang="ar" dir="rtl">إِنَّ الصَّلَاةَ كَانَتْ عَلَى الْمُؤْمِنِينَ كِتَابًا مَوْقُوتًا</span><p>“Indeed, prayer has been decreed upon the believers<br />a decree of specified times.”</p><small>SURAH AN-NISA · 4:103</small></div>
     </section>
-    <section className="daily-section"><div className="section-heading"><h2>Today’s prayer times <span className="subtle-chip">DAILY SCHEDULE</span></h2><button className="text-button" onClick={() => setUse24Hour(!use24Hour)}>{use24Hour ? "12-hour" : "24-hour"} format <ChevronRight size={14} /></button></div>
+    <section className="daily-section"><div className="section-heading"><h2>Today's prayer times <span className="subtle-chip">DAILY SCHEDULE</span></h2><div className="flex gap-2"><button className="text-button" onClick={() => setUse24Hour(!use24Hour)}>{use24Hour ? "12-hour" : "24-hour"} format <ChevronRight size={14} /></button><button className="text-button" onClick={() => setShowAdjustments(!showAdjustments)}>Custom timing <ChevronRight size={14} /></button></div></div>
+      {showAdjustments && <div className="prayer-adjustments" style={{ padding: "12px", marginBottom: "16px", backgroundColor: "rgba(16, 185, 129, 0.05)", borderRadius: "8px", border: "1px solid rgba(16, 185, 129, 0.1)" }}>
+        <div style={{ marginBottom: "12px" }}>
+          <p style={{ fontSize: "12px", fontWeight: 600, color: "#6b7280", marginBottom: "8px", textTransform: "uppercase", letterSpacing: "0.5px" }}>ADJUST PRAYER TIMES (minutes)</p>
+          <p style={{ fontSize: "12px", color: "#9ca3af", marginBottom: "12px" }}>Customize each prayer time offset from the calculated time. Negative values move earlier, positive values move later.</p>
+        </div>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))", gap: "8px", marginBottom: "12px" }}>
+          {Object.entries(adjustments).map(([key, value]) => (
+            <div key={key} style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
+              <label style={{ fontSize: "11px", fontWeight: 600, color: "#374151", textTransform: "capitalize" }}>{key}</label>
+              <input type="number" min="-60" max="60" step="1" value={value} onChange={(e) => updateAdjustment(key as keyof PrayerAdjustments, Number(e.target.value))} style={{ padding: "6px 8px", fontSize: "12px", border: "1px solid rgba(16, 185, 129, 0.2)", borderRadius: "4px", fontFamily: "monospace" }} />
+            </div>
+          ))}
+        </div>
+        <button onClick={resetAdjustments} style={{ fontSize: "12px", padding: "6px 12px", backgroundColor: "#f3f4f6", border: "1px solid #e5e7eb", borderRadius: "4px", cursor: "pointer", fontWeight: 500, color: "#374151", transition: "all 0.2s" }}>Reset to defaults</button>
+      </div>}
       <div className="prayer-grid">{times.map((prayer, index) => {
         const Icon = prayerIcons[index]; const isNext = next?.time.getTime() === prayer.time.getTime(); const passed = now && prayer.time <= now;
         return <article className={`prayer-card ${isNext ? "upcoming" : ""} ${passed ? "passed" : ""}`} key={prayer.name}>
@@ -106,9 +137,9 @@ export default function PrayerDashboard({ navigate }: { navigate: (tab: "quran" 
       <div className="schedule-note"><Compass size={14} /><span>Original Shia method preserved: Fajr −18°, Saher −19° with a 10-minute precaution; Maghrib −4.5° with a 5-minute precaution. Asr and Isha may be combined; consult your marja.</span><a href="/timetable/" target="_blank" rel="noopener noreferrer"><ArrowDownToLine size={14} /> Full timetable</a></div>
     </section>
     <section className="reflection-grid">
-      <article className="daily-reflection"><span className="eyebrow"><span className="little-line" /> A VERSE TO CARRY WITH YOU</span><p className="arabic" lang="ar" dir="rtl">فَإِنَّ مَعَ الْعُسْرِ يُسْرًا</p><blockquote>“For indeed, with hardship comes ease.”</blockquote><div className="between"><span className="muted small">Ash-Sharh · 94:5</span><button className="text-button" onClick={() => navigate("quran")}>Open the Quran <ArrowRight size={16} /></button></div></article>
-      <article className="explore-card"><div className="explore-icon"><BookOpen size={24} /></div><div><span className="eyebrow">WORDS THAT GUIDE</span><h3>Make room for reflection.</h3><p className="muted">Read a verse. Save a thought.<br />Let its meaning stay with you.</p><button className="text-button" onClick={() => navigate("quran")}>Continue your journey <ArrowRight size={16} /></button></div></article>
+      <article className="daily-reflection"><span className="eyebrow"><span className="little-line" /> A VERSE TO CARRY WITH YOU</span><p className="arabic" lang="ar" dir="rtl">فَإِنَّ مَعَ الْعُسْرِ يُسْرًا</p><blockquote>“For indeed, with hardship comes ease.”</blockquote><div className="between"><span className="muted small">Ash-Sharh · 94:5</span><Link className="text-button" href="/quran?ayah=94:5">Open the Quran <ArrowRight size={16} /></Link></div></article>
+      <article className="explore-card"><div className="explore-icon"><BookOpen size={24} /></div><div><span className="eyebrow">WORDS THAT GUIDE</span><h3>Make room for reflection.</h3><p className="muted">Read a verse. Save a thought.<br />Let its meaning stay with you.</p><Link className="text-button" href="/quran">Continue your journey <ArrowRight size={16} /></Link></div></article>
     </section>
-    <button className="dua-banner" onClick={() => navigate("dua")}><span className="dua-banner-icon"><Heart size={21} /></span><span><strong>There’s a dua for every moment.</strong><small>Find words for gratitude, guidance, and everything in between.</small></span><ArrowRight size={20} /></button>
+    <Link className="dua-banner" href="/dua"><span className="dua-banner-icon"><Heart size={21} /></span><span><strong>Explore supplication in the narrations.</strong><small>Search the Thaqalayn corpus for words of gratitude and guidance.</small></span><ArrowRight size={20} /></Link>
   </>;
 }

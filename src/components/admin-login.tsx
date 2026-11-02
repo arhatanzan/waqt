@@ -2,11 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { Lock, X } from "lucide-react";
-
-export interface AdminCredentials {
-  username: string;
-  password: string;
-}
+import { adminSession } from "@/lib/admin-auth-client";
 
 export function AdminLoginDialog({
   isOpen,
@@ -15,7 +11,7 @@ export function AdminLoginDialog({
 }: {
   isOpen: boolean;
   onClose: () => void;
-  onLogin: (credentials: AdminCredentials) => void;
+  onLogin: () => void;
 }) {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
@@ -28,6 +24,9 @@ export function AdminLoginDialog({
       dialog.current?.showModal();
     } else {
       dialog.current?.close();
+      setUsername("");
+      setPassword("");
+      setError("");
     }
   }, [isOpen]);
 
@@ -37,18 +36,10 @@ export function AdminLoginDialog({
     setLoading(true);
 
     try {
-      // Verify credentials with environment variables
-      const response = await fetch("/api/auth/verify", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ username, password }),
-      });
-
-      if (!response.ok) {
-        throw new Error("Invalid credentials");
+      if (!await adminSession("POST", { username, password })) {
+        throw new Error("The server did not create an admin session.");
       }
-
-      onLogin({ username, password });
+      onLogin();
       setUsername("");
       setPassword("");
     } catch (err) {
@@ -64,6 +55,7 @@ export function AdminLoginDialog({
     <dialog
       ref={dialog}
       className="admin-login-dialog"
+      aria-labelledby="admin-login-title"
       onCancel={(e) => {
         e.preventDefault();
         onClose();
@@ -72,7 +64,7 @@ export function AdminLoginDialog({
       <div className="dialog-heading">
         <div>
           <Lock size={20} />
-          <h2>Admin Login</h2>
+          <h2 id="admin-login-title">Admin Login</h2>
         </div>
         <button
           className="icon-button"
@@ -89,6 +81,7 @@ export function AdminLoginDialog({
           <input
             id="username"
             type="text"
+            autoComplete="username"
             value={username}
             onChange={(e) => setUsername(e.target.value)}
             placeholder="Enter admin username"
@@ -102,6 +95,7 @@ export function AdminLoginDialog({
           <input
             id="password"
             type="password"
+            autoComplete="current-password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             placeholder="Enter admin password"

@@ -5,7 +5,8 @@ import ReactMarkdown from "react-markdown";
 import { Bold, Italic, Link as LinkIcon, X, Save, ExternalLink, Lock } from "lucide-react";
 import { useLibrary } from "./library-provider";
 import { parseMedia } from "@/lib/media";
-import { AdminLoginDialog, type AdminCredentials } from "./admin-login";
+import { AdminLoginDialog } from "./admin-login";
+import { adminSession } from "@/lib/admin-auth-client";
 
 export function NotePreview({ text }: { text: string }) {
   const [failed, setFailed] = useState<string[]>([]);
@@ -30,7 +31,8 @@ export default function NoteEditor({ verseKey, onClose }: { verseKey: string; on
   const [discard, setDiscard] = useState(false);
   const [showLoginDialog, setShowLoginDialog] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
-  const [adminCredentials, setAdminCredentials] = useState<AdminCredentials | null>(null);
+  const [authError, setAuthError] = useState("");
+  const [authLoading, setAuthLoading] = useState(true);
   const dialog = useRef<HTMLDialogElement>(null);
   const input = useRef<HTMLTextAreaElement>(null);
 
@@ -39,17 +41,16 @@ export default function NoteEditor({ verseKey, onClose }: { verseKey: string; on
   }, []);
 
   useEffect(() => {
-    // Check if admin is already logged in
-    const stored = localStorage.getItem("waqt.admin");
-    if (stored) {
-      try {
-        const creds = JSON.parse(stored);
-        setAdminCredentials(creds);
-        setIsAdmin(true);
-      } catch {
-        // Invalid stored credentials
-      }
+    const controller = new AbortController();
+    try {
+      localStorage.removeItem("waqt.admin");
+    } catch {
+      setAuthError("Old login data could not be removed from browser storage. Clear the site's stored data on this device.");
     }
+    adminSession("GET", undefined, controller.signal).then(setIsAdmin).catch((error: unknown) => {
+      if (!controller.signal.aborted) setAuthError(error instanceof Error ? error.message : "Could not check the admin session.");
+    }).finally(() => { if (!controller.signal.aborted) setAuthLoading(false); });
+    return () => controller.abort();
   }, []);
 
   function close() {
@@ -64,18 +65,23 @@ export default function NoteEditor({ verseKey, onClose }: { verseKey: string; on
     input.current?.focus();
   }
 
-  function handleAdminLogin(credentials: AdminCredentials) {
-    setAdminCredentials(credentials);
+  function handleAdminLogin() {
     setIsAdmin(true);
+    setAuthError("");
     setShowLoginDialog(false);
-    // Store admin credentials locally (encrypted would be better in production)
-    localStorage.setItem("waqt.admin", JSON.stringify(credentials));
   }
 
-  function handleAdminLogout() {
-    setAdminCredentials(null);
-    setIsAdmin(false);
-    localStorage.removeItem("waqt.admin");
+  async function handleAdminLogout() {
+    setAuthLoading(true);
+    try {
+      await adminSession("DELETE");
+      setIsAdmin(false);
+      setAuthError("");
+    } catch (error) {
+      setAuthError(error instanceof Error ? error.message : "Could not log out. Please try again.");
+    } finally {
+      setAuthLoading(false);
+    }
   }
 
   return <>
@@ -90,7 +96,7 @@ export default function NoteEditor({ verseKey, onClose }: { verseKey: string; on
           <button className="icon-button" aria-label="Close note" onClick={close}><X size={20} /></button>
         </div>
       </div>
-      <p className="muted">A thought, a lesson, a moment to return to. {isAdmin ? "Saved to GitHub." : "Only saved on this device."}</p>
+      <p className="muted">A thought, a lesson, a moment to return to. Only saved on this device; GitHub sync is not connected.</p>
       <div className="editor-toolbar">
         <button aria-label="Bold text" onClick={() => format("**")}><Bold size={17} /></button>
         <button aria-label="Italic text" onClick={() => format("*")}><Italic size={17} /></button>
@@ -98,11 +104,11 @@ export default function NoteEditor({ verseKey, onClose }: { verseKey: string; on
         <span>Markdown supported • Text typing enabled</span>
         <div className="toolbar-spacer" />
         {!isAdmin ? (
-          <button className="text-button small" onClick={() => setShowLoginDialog(true)}>
-            <Lock size={14} /> Admin Login
+          <button className="text-button small" disabled={authLoading} onClick={() => setShowLoginDialog(true)}>
+            <Lock size={14} /> {authLoading ? "Checking login..." : "Admin Login"}
           </button>
         ) : (
-          <button className="text-button small" onClick={handleAdminLogout}>
+          <button className="text-button small" disabled={authLoading} onClick={() => void handleAdminLogout()}>
             Logout
           </button>
         )}
@@ -126,6 +132,7 @@ export default function NoteEditor({ verseKey, onClose }: { verseKey: string; on
       <p className="muted small">Media loads from its original host. Never paste private recording links unless you trust the host.</p>
       {discard && <div className="notice" role="alert">You have unsaved changes. <button onClick={onClose}>Discard changes</button></div>}
       {error && <div className="notice" role="alert">{error}</div>}
+      {authError && <div className="notice" role="alert">{authError}</div>}
       <div className="dialog-actions">
         <button className="button secondary" onClick={close}>Cancel</button>
         <button className="button" disabled={!ready} onClick={() => { if (saveNote(verseKey, text)) onClose(); }}>

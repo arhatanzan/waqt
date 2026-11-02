@@ -156,12 +156,17 @@ small {
 }
 
 .app-shell {
+  --sidebar-width: 248px;
   display: flex;
   min-height: 100vh;
 }
 
+.app-shell.sidebar-collapsed {
+  --sidebar-width: 70px;
+}
+
 .sidebar {
-  width: 248px;
+  width: var(--sidebar-width);
   position: fixed;
   inset: 0 auto 0 0;
   background: var(--surface);
@@ -169,6 +174,9 @@ small {
   display: flex;
   flex-direction: column;
   padding: 38px 23px 20px;
+  overflow-y: auto;
+  overflow-x: hidden;
+  transition: width .3s ease, padding .3s ease;
   z-index: 30;
 }
 
@@ -196,6 +204,7 @@ small {
 }
 
 .brand-mark {
+  flex-shrink: 0;
   background: var(--green-soft);
   color: var(--green);
   height: 44px;
@@ -223,6 +232,7 @@ small {
 }
 
 .nav-item {
+  position: relative;
   display: flex;
   align-items: center;
   gap: 13px;
@@ -250,7 +260,7 @@ small {
   width: 3px;
   background: var(--green);
   position: absolute;
-  left: 23px;
+  left: 0;
   border-radius: 5px;
 }
 
@@ -318,8 +328,9 @@ small {
 }
 
 .workspace {
-  width: calc(100% - 248px);
-  margin-left: 248px;
+  width: calc(100% - var(--sidebar-width));
+  margin-left: var(--sidebar-width);
+  min-width: 0;
   transition: width 0.3s ease, margin-left 0.3s ease;
 }
 
@@ -1309,7 +1320,7 @@ input[type=checkbox] {
 .audio-player {
   position: fixed;
   bottom: 20px;
-  left: calc(248px + (100vw - 248px) / 2);
+  left: calc(var(--sidebar-width) + (100vw - var(--sidebar-width)) / 2);
   transform: translateX(-50%);
   display: flex;
   align-items: center;
@@ -1320,7 +1331,7 @@ input[type=checkbox] {
   border-radius: 15px;
   padding: 14px 22px;
   box-shadow: 0 10px 40px #0002;
-  width: min(490px,calc(100vw - 300px));
+  width: min(490px,calc(100vw - var(--sidebar-width) - 40px));
 }
 
 .audio-player strong {
@@ -1672,14 +1683,12 @@ input[type=checkbox] {
 }
 
 @media(max-width:1200px) {
+  .app-shell {
+    --sidebar-width: 215px;
+  }
   .sidebar {
-    width: 215px;
     padding-left: 17px;
     padding-right: 17px;
-  }
-  .workspace {
-    margin-left: 215px;
-    width: calc(100% - 215px);
   }
   main {
     padding: 30px 28px 0;
@@ -1709,9 +1718,6 @@ input[type=checkbox] {
     grid-template-columns: 225px minmax(0,1fr);
     gap: 15px;
   }
-  .audio-player {
-    left: calc(215px + (100vw - 215px) / 2);
-  }
   .reflection-grid {
     grid-template-columns: 1fr 1fr;
   }
@@ -1731,8 +1737,10 @@ input[type=checkbox] {
 }
 
 @media(max-width:960px) {
+  .app-shell {
+    --sidebar-width: 185px;
+  }
   .sidebar {
-    width: 185px;
     padding: 30px 12px 18px;
   }
   .sidebar .brand {
@@ -1760,7 +1768,7 @@ input[type=checkbox] {
     gap: 10px;
   }
   .nav-item.active:before {
-    left: 12px;
+    left: 0;
   }
   .sidebar-quote {
     padding: 18px 12px;
@@ -1770,10 +1778,6 @@ input[type=checkbox] {
   }
   .sidebar-quote>span {
     font-size: 10px;
-  }
-  .workspace {
-    margin-left: 185px;
-    width: calc(100% - 185px);
   }
   main {
     padding: 28px 22px 0;
@@ -1872,10 +1876,6 @@ input[type=checkbox] {
   .index-row {
     padding: 10px;
   }
-  .audio-player {
-    left: calc(185px + (100vw - 185px) / 2);
-    width: calc(100vw - 225px);
-  }
   .dua-grid {
     grid-template-columns: 1fr;
   }
@@ -1898,7 +1898,14 @@ input[type=checkbox] {
 }
 
 @media(max-width:700px) {
+  .app-shell,
+  .app-shell.sidebar-collapsed {
+    --sidebar-width: 0px;
+  }
   .sidebar {
+    display: none;
+  }
+  .topbar .sidebar-toggle {
     display: none;
   }
   .workspace {
@@ -2356,6 +2363,168 @@ input[type=checkbox] {
   }
 }
 
+.corpus-links,.hadith-links,.pagination-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px 20px;
+  align-items: center;
+}
+.corpus-links {
+  margin-bottom: 24px;
+  color: var(--green);
+}
+.corpus-links a {
+  display: inline-flex;
+  gap: 6px;
+  align-items: center;
+}
+.collection-count {
+  margin-bottom: 18px;
+}
+.book-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit,minmax(min(100%,300px),1fr));
+  gap: 18px;
+  margin-bottom: 25px;
+}
+.book-card,.book-intro,.hadith-card,.corpus-form,.pagination {
+  padding: 24px;
+  overflow-wrap: anywhere;
+}
+.book-card {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 12px;
+}
+.book-card h2,.hadith-card h2 {
+  font-size: 20px;
+}
+.book-card .button {
+  margin-top: auto;
+}
+.book-intro,.corpus-form,.pagination,.hadith-links {
+  margin-bottom: 20px;
+}
+.corpus-form {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  gap: 16px;
+}
+.corpus-form label {
+  flex: 1 1 200px;
+}
+.corpus-form label,.random-form label {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+.corpus-form input,.corpus-form select,.random-form select,.page-jump input {
+  width: 100%;
+  padding: 10px;
+  background: var(--surface-soft);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+}
+.corpus-form>p {
+  flex-basis: 100%;
+}
+.hadith-list {
+  display: grid;
+  gap: 20px;
+  margin-bottom: 20px;
+}
+.hadith-card>div,.hadith-card>details {
+  margin-bottom: 20px;
+}
+.hadith-card .between {
+  align-items: flex-start;
+  gap: 15px;
+}
+.hadith-arabic {
+  font-size: 27px;
+  line-height: 2.2;
+}
+.provider-text {
+  white-space: pre-line;
+}
+.provider-text p+p {
+  margin-top: 12px;
+}
+.provider-text a {
+  color: var(--green);
+  text-decoration: underline;
+}
+.provider-text ul,.provider-text ol,.book-card ul {
+  padding-inline-start: 22px;
+  list-style: revert;
+}
+.hadith-card summary,.book-card summary,.book-intro summary {
+  cursor: pointer;
+  color: var(--green);
+  margin-bottom: 12px;
+}
+.source-details {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 6px 16px;
+  margin-bottom: 15px;
+}
+.source-detail-row {
+  display: contents;
+}
+.source-details dt {
+  color: var(--muted);
+}
+.source-details dd {
+  margin: 0;
+}
+.grading {
+  padding: 15px 0;
+  border-top: 1px solid var(--line);
+}
+.pagination {
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+}
+.page-jump,.page-jump label,.random-form {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  min-width: 0;
+}
+.page-jump input {
+  width: 90px;
+}
+.random-form {
+  flex: 1;
+}
+.random-form label {
+  flex: 1;
+}
+@media(max-width:700px) {
+  .mobile-nav>a {
+    min-width: 0;
+    flex: 1;
+    font-size: 8px;
+  }
+  .book-card,.book-intro,.hadith-card,.corpus-form,.pagination {
+    padding: 18px;
+  }
+  .hadith-arabic {
+    font-size: 24px;
+  }
+  .pagination-links {
+    gap: 8px;
+  }
+}
+
 @media(prefers-reduced-motion:reduce) {
   *,*::before,*::after {
     scroll-behavior: auto!important;
@@ -2365,122 +2534,52 @@ input[type=checkbox] {
 }
 
 /* Collapsible Sidebar */
-.sidebar {
-  transition: width 0.3s ease;
-  position: relative;
-  display: flex;
-  flex-direction: column;
-}
-
 .sidebar.closed {
-  width: 70px;
+  padding: 30px 12px 18px;
 }
 
-/* Hide text labels when sidebar is closed */
-.sidebar.closed .sidebar-label {
-  display: none;
-}
-
-.sidebar.closed .brand span:not(.brand-mark) {
-  display: none;
-}
-
-.sidebar.closed nav {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
+.sidebar.closed .brand {
   padding: 0;
-}
-
-.sidebar.closed .nav-item {
-  padding: 14px;
   justify-content: center;
-  position: relative;
 }
 
-.sidebar.closed .nav-item span:not(.nav-count) {
-  display: none;
-}
-
-.sidebar.closed .nav-count {
-  position: absolute;
-  top: 4px;
-  right: 4px;
-  display: none;
-}
-
+.sidebar.closed .sidebar-label,
+.sidebar.closed .brand > span:last-child,
+.sidebar.closed .nav-item span,
 .sidebar.closed .sidebar-bottom {
   display: none;
 }
 
+.sidebar.closed nav {
+  margin-top: 32px;
+}
+
+.sidebar.closed .nav-item {
+  padding: 14px 0;
+  justify-content: center;
+}
+
 .sidebar-toggle {
-  display: none;
-}
-
-/* Update workspace width based on sidebar state */
-.sidebar.closed ~ .workspace {
-  width: calc(100% - 70px) !important;
-  margin-left: 70px !important;
-}
-
-@media (max-width: 1024px) {
-  .sidebar.closed {
-    width: 248px;
-  }
-
-  .sidebar.closed .sidebar-label {
-    display: block;
-  }
-
-  .sidebar.closed .brand span:not(.brand-mark) {
-    display: inline;
-  }
-
-  .sidebar.closed nav {
-    display: grid;
-  }
-
-  .sidebar.closed .nav-item {
-    padding: 14px 16px;
-    justify-content: flex-start;
-  }
-
-  .sidebar.closed .nav-item span:not(.nav-count) {
-    display: inline;
-  }
-
-  .sidebar.closed .nav-count {
-    display: block;
-  }
-
-  .sidebar-toggle {
-    display: inline-flex;
-  }
-
-  .sidebar.closed .sidebar-bottom {
-    display: block;
-  }
-
-  .sidebar.closed ~ .workspace {
-    width: calc(100% - 248px) !important;
-    margin-left: 248px !important;
-  }
+  display: inline-flex;
 }
 
 /* Azan Player */
 .azan-player-widget {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
   background: var(--surface-soft);
   border: 1px solid var(--line);
   border-radius: 12px;
-  padding: 16px;
-  margin-bottom: 20px;
+  padding: 12px 16px;
+  margin-bottom: 24px;
 }
 
 .azan-header {
   display: flex;
   align-items: center;
   gap: 9px;
-  margin-bottom: 12px;
   font-size: 12px;
   font-weight: 600;
   color: var(--muted);
@@ -2491,77 +2590,15 @@ input[type=checkbox] {
   color: var(--gold);
 }
 
-.azan-controls {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-
-.azan-play-button {
-  width: 40px;
-  height: 40px;
-  border-radius: 8px;
-  background: var(--green);
-  color: var(--surface);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-  transition: background 0.2s, transform 0.1s;
-}
-
-.azan-play-button:hover {
-  background: var(--green);
-  opacity: 0.9;
-}
-
-.azan-play-button:active {
-  transform: scale(0.95);
-}
-
-.azan-volume-control {
-  flex: 1;
-  display: flex;
-  align-items: center;
-}
-
-.volume-slider {
+.azan-player-widget audio {
+  flex: 1 1 280px;
   width: 100%;
-  height: 5px;
-  border-radius: 4px;
-  background: var(--line);
-  outline: none;
-  -webkit-appearance: none;
-  appearance: none;
-}
-
-.volume-slider::-webkit-slider-thumb {
-  -webkit-appearance: none;
-  appearance: none;
-  width: 12px;
-  height: 12px;
-  border-radius: 50%;
-  background: var(--green);
-  cursor: pointer;
-  transition: background 0.2s;
-}
-
-.volume-slider::-moz-range-thumb {
-  width: 12px;
-  height: 12px;
-  border-radius: 50%;
-  background: var(--green);
-  cursor: pointer;
-  border: none;
-  transition: background 0.2s;
-}
-
-.volume-slider::-webkit-slider-thumb:hover {
-  background: var(--green);
-  opacity: 0.8;
+  min-width: 0;
+  height: 40px;
 }
 
 .azan-error {
+  flex-basis: 100%;
   font-size: 11px;
   color: #d9534f;
   margin-top: 8px;

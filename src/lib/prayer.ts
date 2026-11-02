@@ -12,7 +12,21 @@ SunCalc.addTime(-4.5, "maghribExact", "maghribEnd");
 
 export type Place = { name: string; latitude: number; longitude: number; timezone: string };
 export type Prayer = { name: string; arabic: string; time: Date; prayer: boolean };
+export type PrayerAdjustments = {
+  saher: number;
+  fajr: number;
+  sunrise: number;
+  dhuhr: number;
+  maghrib: number;
+};
 export const defaultPlace: Place = { name: "Lucknow, India", latitude: 26.8467, longitude: 80.9462, timezone: "Asia/Kolkata" };
+export const defaultAdjustments: PrayerAdjustments = {
+  saher: -10,
+  fajr: 0,
+  sunrise: 1,
+  dhuhr: -1,
+  maghrib: -5,
+};
 
 export function dateAtLocation(now: Date, timezone: string, offset = 0) {
   const parts = new Intl.DateTimeFormat("en-CA", { timeZone: timezone, year: "numeric", month: "2-digit", day: "2-digit" }).formatToParts(now);
@@ -29,19 +43,19 @@ export function dateAtLocation(now: Date, timezone: string, offset = 0) {
   }
   return new Date(timestamp);
 }
-export function prayerTimes(day: Date, place: Place): Prayer[] {
+export function prayerTimes(day: Date, place: Place, adjustments: PrayerAdjustments = defaultAdjustments): Prayer[] {
   const times = SunCalc.getTimes(day, place.latitude, place.longitude);
   const shift = (date: Date, minutes: number) => new Date(date.getTime() + minutes * 60000);
   return [
-    { name: "Saher ends", arabic: "السحر", time: shift(times.saherExact, -10), prayer: false },
-    { name: "Fajr", arabic: "الفجر", time: times.nightEnd, prayer: true },
-    { name: "Sunrise", arabic: "الشروق", time: shift(times.sunrise, 1), prayer: false },
-    { name: "Dhuhr", arabic: "الظهر", time: shift(times.solarNoon, -1), prayer: true },
-    { name: "Maghrib", arabic: "المغرب", time: shift(times.maghribEnd, -5), prayer: true },
+    { name: "Saher ends", arabic: "السحر", time: shift(times.saherExact, adjustments.saher), prayer: false },
+    { name: "Fajr", arabic: "الفجر", time: shift(times.nightEnd, adjustments.fajr), prayer: true },
+    { name: "Sunrise", arabic: "الشروق", time: shift(times.sunrise, adjustments.sunrise), prayer: false },
+    { name: "Dhuhr", arabic: "الظهر", time: shift(times.solarNoon, adjustments.dhuhr), prayer: true },
+    { name: "Maghrib", arabic: "المغرب", time: shift(times.maghribEnd, adjustments.maghrib), prayer: true },
   ];
 }
-export function nextPrayer(now: Date, place: Place) {
-  return [0, 1].flatMap((offset) => prayerTimes(dateAtLocation(now, place.timezone, offset), place))
+export function nextPrayer(now: Date, place: Place, adjustments: PrayerAdjustments = defaultAdjustments) {
+  return [0, 1].flatMap((offset) => prayerTimes(dateAtLocation(now, place.timezone, offset), place, adjustments))
     .filter((p) => p.prayer && p.time > now)
     .sort((a, b) => a.time.getTime() - b.time.getTime())[0];
 }
