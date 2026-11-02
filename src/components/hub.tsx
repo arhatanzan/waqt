@@ -58,21 +58,17 @@ function Content() {
     <a className="skip-link" href="#main-content">Skip to content</a>
     <aside className={`sidebar ${sidebarOpen ? "open" : "closed"}`}>
       <a className="brand" href="#prayer" onClick={() => navigate("prayer")}><span className="brand-mark"><Moon size={25} /></span><span>waqt<span className="brand-dot">.</span><small>MAKE TIME FOR WHAT MATTERS</small></span></a>
-      {sidebarOpen && (
-        <>
-          <div className="sidebar-label">YOUR DAILY COMPANION</div>
-          <nav aria-label="Main navigation">{navigation.map(({ id, label, icon: Icon }) =>
-            <a key={id} href={`#${id}`} onClick={() => navigate(id)} className={`nav-item ${tab === id ? "active" : ""}`} aria-current={tab === id ? "page" : undefined}>
-              <Icon size={20} /><span>{label}</span>{id === "saved" && <span className="nav-count">{library.ayats.length + library.duas.length}</span>}
-            </a>)}</nav>
-          <div className="sidebar-bottom">
-            <AzanPlayer />
-            <div className="sidebar-quote"><Sparkles size={20} /><p>A little closer.<br />Every single day.</p><span>Your space to pause, reflect,<br />and reconnect.</span></div>
-            <a className="legacy-link" href="/timetable/" target="_blank" rel="noopener noreferrer">Timetable & PDF tools <ArrowUpRight size={15} /></a>
-            <div className="sidebar-footer"><span>MADE WITH INTENTION</span><span>✦</span></div>
-          </div>
-        </>
-      )}
+      <div className="sidebar-label">YOUR DAILY COMPANION</div>
+      <nav aria-label="Main navigation">{navigation.map(({ id, label, icon: Icon }) =>
+        <a key={id} href={`#${id}`} onClick={() => navigate(id)} className={`nav-item ${tab === id ? "active" : ""}`} aria-current={tab === id ? "page" : undefined} title={label}>
+          <Icon size={20} /><span>{label}</span>{id === "saved" && <span className="nav-count">{library.ayats.length + library.duas.length}</span>}
+        </a>)}</nav>
+      <div className="sidebar-bottom">
+        <AzanPlayer />
+        <div className="sidebar-quote"><Sparkles size={20} /><p>A little closer.<br />Every single day.</p><span>Your space to pause, reflect,<br />and reconnect.</span></div>
+        <a className="legacy-link" href="/timetable/" target="_blank" rel="noopener noreferrer">Timetable & PDF tools <ArrowUpRight size={15} /></a>
+        <div className="sidebar-footer"><span>MADE WITH INTENTION</span><span>✦</span></div>
+      </div>
     </aside>
     <div className="workspace">
       <header className="topbar"><span className="topbar-crumb">Your daily companion <span>/</span> <strong>{navigation.find((item) => item.id === tab)?.label}</strong></span>

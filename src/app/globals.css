@@ -320,6 +320,7 @@ small {
 .workspace {
   width: calc(100% - 248px);
   margin-left: 248px;
+  transition: width 0.3s ease, margin-left 0.3s ease;
 }
 
 .topbar {
@@ -2365,20 +2366,49 @@ input[type=checkbox] {
 
 /* Collapsible Sidebar */
 .sidebar {
-  transition: width 0.3s ease, margin-left 0.3s ease;
+  transition: width 0.3s ease;
   position: relative;
+  display: flex;
+  flex-direction: column;
 }
 
 .sidebar.closed {
   width: 70px;
 }
 
+/* Hide text labels when sidebar is closed */
+.sidebar.closed .sidebar-label {
+  display: none;
+}
+
 .sidebar.closed .brand span:not(.brand-mark) {
   display: none;
 }
 
-.sidebar.closed .sidebar-label,
-.sidebar.closed nav,
+.sidebar.closed nav {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 0;
+}
+
+.sidebar.closed .nav-item {
+  padding: 14px;
+  justify-content: center;
+  position: relative;
+}
+
+.sidebar.closed .nav-item span:not(.nav-count) {
+  display: none;
+}
+
+.sidebar.closed .nav-count {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  display: none;
+}
+
 .sidebar.closed .sidebar-bottom {
   display: none;
 }
@@ -2387,28 +2417,53 @@ input[type=checkbox] {
   display: none;
 }
 
+/* Update workspace width based on sidebar state */
+.sidebar.closed ~ .workspace {
+  width: calc(100% - 70px) !important;
+  margin-left: 70px !important;
+}
+
 @media (max-width: 1024px) {
   .sidebar.closed {
     width: 248px;
+  }
+
+  .sidebar.closed .sidebar-label {
+    display: block;
   }
 
   .sidebar.closed .brand span:not(.brand-mark) {
     display: inline;
   }
 
+  .sidebar.closed nav {
+    display: grid;
+  }
+
+  .sidebar.closed .nav-item {
+    padding: 14px 16px;
+    justify-content: flex-start;
+  }
+
+  .sidebar.closed .nav-item span:not(.nav-count) {
+    display: inline;
+  }
+
+  .sidebar.closed .nav-count {
+    display: block;
+  }
+
   .sidebar-toggle {
     display: inline-flex;
   }
 
-  .workspace {
-    width: calc(100% - 248px);
-    margin-left: 248px;
-    transition: width 0.3s ease, margin-left 0.3s ease;
+  .sidebar.closed .sidebar-bottom {
+    display: block;
   }
 
   .sidebar.closed ~ .workspace {
-    width: calc(100% - 70px);
-    margin-left: 70px;
+    width: calc(100% - 248px) !important;
+    margin-left: 248px !important;
   }
 }
 
