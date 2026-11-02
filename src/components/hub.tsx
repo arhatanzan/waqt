@@ -4,15 +4,13 @@ import { useEffect, useState } from "react";
 import { motion, MotionConfig } from "motion/react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { BookOpen, Bookmark, Heart, LibraryBig, Leaf, Moon, Sun, Clock3, ArrowUpRight, Sparkles, Menu, X } from "lucide-react";
+import { BookOpen, Bookmark, LibraryBig, Moon, Sun, Clock3, ArrowUpRight, Sparkles, Menu, X } from "lucide-react";
 import { LibraryProvider, useLibrary } from "./library-provider";
 
 const navigation = [
   { id: "prayer", label: "Prayer Times", icon: Clock3 },
   { id: "quran", label: "Quran", icon: BookOpen },
   { id: "hadith", label: "Hadith", icon: LibraryBig },
-  { id: "dua", label: "Dua", icon: Heart },
-  { id: "ingredients", label: "Ingredients", icon: Leaf },
   { id: "saved", label: "My Library", icon: Bookmark },
 ] as const;
 function Content({ children }: { children: React.ReactNode }) {
